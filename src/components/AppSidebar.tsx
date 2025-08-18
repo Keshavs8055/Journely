@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { LayoutDashboard, Settings, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
+import { SignOutButton } from './SignOutButton';
 
 export function AppSidebar() {
   return (
@@ -23,7 +24,7 @@ export function AppSidebar() {
           </Link>
         </Button>
       </nav>
-      <div className="p-4 mt-auto border-t">
+      <div className="p-4 border-t">
         <Button className="w-full gap-2" asChild>
           <Link href="/new-entry">
             <PlusCircle size={20} />
@@ -31,6 +32,7 @@ export function AppSidebar() {
           </Link>
         </Button>
       </div>
+      <SignOutButton />
     </div>
   );
 }
