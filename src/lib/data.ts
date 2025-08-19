@@ -31,6 +31,21 @@ export const getEntries = (): JournalEntry[] => {
   return journalEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
+export const getEntry = (id: string): JournalEntry | undefined => {
+    return journalEntries.find(entry => entry.id === id);
+}
+
 export const addEntry = (entry: JournalEntry) => {
   journalEntries.unshift(entry);
 };
+
+export const updateEntry = (updatedEntry: JournalEntry) => {
+    const index = journalEntries.findIndex(entry => entry.id === updatedEntry.id);
+    if (index !== -1) {
+        journalEntries[index] = updatedEntry;
+    }
+}
+
+export const deleteEntry = (id: string) => {
+    journalEntries = journalEntries.filter(entry => entry.id !== id);
+}

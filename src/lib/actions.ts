@@ -4,7 +4,7 @@ import { summarizeJournalEntry } from '@/ai/flows/summarize-journal-entry';
 import { detectEmotionalTone } from '@/ai/flows/detect-emotional-tone';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addEntry } from '@/lib/data';
+import { addEntry, updateEntry as dbUpdateEntry, deleteEntry as dbDeleteEntry, getEntry } from '@/lib/data';
 
 export async function createJournalEntry(formData: FormData) {
   const title = formData.get('title') as string;
@@ -43,4 +43,63 @@ export async function createJournalEntry(formData: FormData) {
 
   revalidatePath('/');
   redirect('/');
+}
+
+export async function updateJournalEntry(formData: FormData) {
+  const id = formData.get('id') as string;
+  const title = formData.get('title') as string;
+  const content = formData.get('content') as string;
+
+  if (!id || !title || !content) {
+    return;
+  }
+  
+  const existingEntry = getEntry(id);
+  if (!existingEntry) {
+    return; // Or throw an error
+  }
+
+  let summary = existingEntry.summary;
+  let tone = existingEntry.tone;
+
+  // Only re-run AI if content has changed
+  if (content !== existingEntry.content) {
+    try {
+      const [summaryResult, toneResult] = await Promise.all([
+        summarizeJournalEntry({ journalEntry: content }),
+        detectEmotionalTone({ journalEntry: content }),
+      ]);
+      summary = summaryResult.summary;
+      tone = toneResult.emotionalTone;
+    } catch (error) {
+      console.error('AI processing failed during update:', error);
+    }
+  }
+
+
+  const updatedEntry = {
+    ...existingEntry,
+    title,
+    content,
+    summary,
+    tone,
+  };
+
+  dbUpdateEntry(updatedEntry);
+
+  revalidatePath('/');
+  revalidatePath(`/entry/${id}`);
+  redirect(`/entry/${id}`);
+}
+
+export async function deleteJournalEntry(id: string) {
+    dbDeleteEntry(id);
+    revalidatePath('/');
+    redirect('/');
+}
+
+export async function deleteMultipleEntries(formData: FormData) {
+    const entryIds = formData.getAll('entryIds') as string[];
+    entryIds.forEach(id => dbDeleteEntry(id));
+    revalidatePath('/');
 }
