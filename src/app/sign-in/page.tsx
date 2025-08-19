@@ -8,6 +8,8 @@ import {
   GoogleAuthProvider,
   signInWithRedirect,
   getRedirectResult,
+  sendPasswordResetEmail,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -24,14 +26,29 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Logo } from '@/components/Logo';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirectLoading, setIsRedirectLoading] = useState(true);
+  const [resetEmail, setResetEmail] = useState('');
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkRedirect = async () => {
@@ -39,11 +56,12 @@ export default function SignInPage() {
         const result = await getRedirectResult(auth);
         if (result) {
           router.push('/');
-          // No need to set loading to false here, as we are navigating away
           return;
         }
       } catch (error: any) {
-        setError(error.message);
+        if (error.code !== 'auth/popup-closed-by-user') {
+            setError(error.message);
+        }
       }
       setIsRedirectLoading(false);
     };
@@ -53,13 +71,23 @@ export default function SignInPage() {
   const handleAuthAction = async (action: 'signIn' | 'signUp') => {
     setIsLoading(true);
     setError(null);
+    setInfo(null);
     try {
       if (action === 'signUp') {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(userCredential.user);
+        setInfo('Sign up successful! A verification email has been sent. Please check your inbox.');
+        setEmail('');
+        setPassword('');
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        if (!userCredential.user.emailVerified) {
+            setError('Please verify your email before logging in. Another verification email has been sent.');
+            await sendEmailVerification(userCredential.user);
+            return;
+        }
+        router.push('/');
       }
-      router.push('/');
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -67,8 +95,32 @@ export default function SignInPage() {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+        toast({
+            title: "Error",
+            description: "Please enter your email address.",
+            variant: "destructive"
+        });
+        return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+        await sendPasswordResetEmail(auth, resetEmail);
+        toast({
+            title: "Success",
+            description: "A password reset email has been sent to your address.",
+        });
+    } catch (error: any) {
+        setError(error.message);
+    } finally {
+        setIsLoading(false);
+    }
+  }
+
   const handleGoogleSignIn = async () => {
-    setIsLoading(true); // Also set this to true to disable buttons
+    setIsLoading(true);
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
@@ -134,6 +186,37 @@ export default function SignInPage() {
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
+               <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="link" className="text-sm">Forgot Password?</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Reset Password</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Enter your email address and we'll send you a link to reset your password.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="reset-email">Email</Label>
+                        <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="m@example.com"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                        />
+                    </div>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handlePasswordReset}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send Reset Link
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+                </AlertDialog>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -195,6 +278,9 @@ export default function SignInPage() {
           </Button>
         </div>
       </Tabs>
+      {info && (
+        <p className="mt-4 text-sm text-green-600">{info}</p>
+      )}
       {error && (
         <p className="mt-4 text-sm text-destructive">{error}</p>
       )}
