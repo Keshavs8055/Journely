@@ -24,6 +24,8 @@ export function JournalForm() {
     formData.set('content', encryptedContent);
     // Add userId to the form data
     formData.append('userId', user.uid);
+    // Set entry type
+    formData.append('type', 'journal');
     
     await createJournalEntry(formData);
   };

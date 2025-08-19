@@ -3,22 +3,24 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { addEntry, updateEntry as dbUpdateEntry, deleteEntry as dbDeleteEntry } from '@/lib/data';
-import { auth } from './firebase';
+import type { JournalEntry } from './types';
 
 export async function createJournalEntry(formData: FormData) {
   const title = formData.get('title') as string;
   const content = formData.get('content') as string; // This is encrypted
   const userId = formData.get('userId') as string;
+  const type = formData.get('type') as JournalEntry['type'];
 
-  if (!title || !content || !userId) {
+  if (!content || !userId || !type) {
     // In a real app, handle this with an error message
     return;
   }
   
   const newEntry = {
     date: new Date(),
-    title,
+    title: title || `Reflection - ${new Date().toLocaleDateString()}`, // Default title for reflections
     content,
+    type,
   };
 
   await addEntry(userId, newEntry);

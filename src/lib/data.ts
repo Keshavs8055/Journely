@@ -1,7 +1,6 @@
 import { db } from './firebase';
 import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import type { JournalEntry } from './types';
-import { unstable_cache as cache } from 'next/cache';
 
 // This function can now be called from client components since it's used in useEffect
 export async function getEntries(userId: string): Promise<JournalEntry[]> {

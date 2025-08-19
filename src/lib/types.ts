@@ -3,4 +3,5 @@ export type JournalEntry = {
   date: string;
   title: string;
   content: string;
+  type: 'journal' | 'reflection';
 };

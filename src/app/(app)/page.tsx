@@ -9,18 +9,23 @@ import { generateReflectionPrompt } from '@/ai/flows/generate-reflection-prompt'
 import { useSession } from '@/components/SessionProvider';
 import type { JournalEntry } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DailyReflectionForm } from '@/components/DailyReflectionForm';
 
-function DailyReflectionCard({ prompt }: { prompt: string | null }) {
+function DailyReflectionCard({ prompt, isLoading }: { prompt: string | null, isLoading: boolean }) {
     return (
         <Card className="bg-primary/20 border-primary/40">
             <CardHeader>
                 <CardTitle className="font-headline">Daily Reflection</CardTitle>
             </CardHeader>
             <CardContent>
-                {prompt ? (
-                    <p className="text-lg text-foreground/80">{prompt}</p>
+                {isLoading ? (
+                    <div className="space-y-4">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-24 w-full" />
+                    </div>
                 ) : (
-                    <Skeleton className="h-6 w-3/4" />
+                    <DailyReflectionForm prompt={prompt} />
                 )}
             </CardContent>
         </Card>
@@ -34,6 +39,9 @@ export default function DashboardPage() {
     const [dailyReflectionPrompt, setDailyReflectionPrompt] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const journalEntries = entries.filter(e => e.type === 'journal');
+    const reflectionEntries = entries.filter(e => e.type === 'reflection');
+
     useEffect(() => {
         async function fetchData() {
             if (user) {
@@ -41,9 +49,11 @@ export default function DashboardPage() {
                 const fetchedEntries = await getEntries(user.uid);
                 setEntries(fetchedEntries);
 
-                if (fetchedEntries.length > 0) {
+                const journals = fetchedEntries.filter(e => e.type === 'journal');
+
+                if (journals.length > 0) {
                     try {
-                        const entryTitles = fetchedEntries.map(e => e.title).join('\n');
+                        const entryTitles = journals.map(e => e.title).join('\n');
                         const result = await generateReflectionPrompt({ journalEntries: entryTitles });
                         setDailyReflectionPrompt(result.reflectionPrompt);
                     } catch (error) {
@@ -64,21 +74,40 @@ export default function DashboardPage() {
         <div className="space-y-8">
             <Header />
 
-            <DailyReflectionCard prompt={dailyReflectionPrompt} />
+            <DailyReflectionCard prompt={dailyReflectionPrompt} isLoading={isLoading} />
 
-            {isLoading ? (
-                 <div className="space-y-4">
-                    <Skeleton className="h-8 w-1/4" />
-                    <Skeleton className="h-px w-full" />
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <Skeleton className="h-40" />
-                        <Skeleton className="h-40" />
-                        <Skeleton className="h-40" />
-                    </div>
-                 </div>
-            ) : (
-                <JournalEntries entries={entries} />
-            )}
+            <Tabs defaultValue="journals" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="journals">Journal Entries</TabsTrigger>
+                    <TabsTrigger value="reflections">Reflections</TabsTrigger>
+                </TabsList>
+                <TabsContent value="journals">
+                     {isLoading ? (
+                        <div className="space-y-4 mt-4">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                <Skeleton className="h-40" />
+                                <Skeleton className="h-40" />
+                                <Skeleton className="h-40" />
+                            </div>
+                        </div>
+                    ) : (
+                        <JournalEntries entries={journalEntries} />
+                    )}
+                </TabsContent>
+                <TabsContent value="reflections">
+                    {isLoading ? (
+                        <div className="space-y-4 mt-4">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                <Skeleton className="h-40" />
+                                <Skeleton className="h-40" />
+                                <Skeleton className="h-40" />
+                            </div>
+                        </div>
+                    ) : (
+                        <JournalEntries entries={reflectionEntries} />
+                    )}
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
