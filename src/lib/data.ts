@@ -4,8 +4,12 @@ import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, 
 import type { JournalEntry } from './types';
 import { unstable_cache as cache } from 'next/cache';
 
+// A mock user ID is used here because server-side auth is not fully implemented.
+// In a production app, you would get the user ID from the session.
+const getUserId = () => 'static-user-id';
+
 export const getEntries = cache(async (): Promise<JournalEntry[]> => {
-    const userId = auth.currentUser?.uid;
+    const userId = getUserId();
     if (!userId) return [];
   
     const entriesCollection = collection(db, 'users', userId, 'entries');
@@ -23,7 +27,7 @@ export const getEntries = cache(async (): Promise<JournalEntry[]> => {
 }, ['journal-entries'], { revalidate: 60, tags: ['entries'] });
 
 export const getEntry = cache(async (id: string): Promise<JournalEntry | null> => {
-    const userId = auth.currentUser?.uid;
+    const userId = getUserId();
     if (!userId) return null;
 
     const entryDocRef = doc(db, 'users', userId, 'entries', id);
@@ -42,7 +46,7 @@ export const getEntry = cache(async (id: string): Promise<JournalEntry | null> =
 }, ['journal-entry-by-id'], { revalidate: 60, tags: ['entry'] });
 
 export const addEntry = async (entry: Omit<JournalEntry, 'id' | 'date'> & { date: Date }) => {
-    const userId = auth.currentUser?.uid;
+    const userId = getUserId();
     if (!userId) {
         throw new Error('User not authenticated');
     }
@@ -55,7 +59,7 @@ export const addEntry = async (entry: Omit<JournalEntry, 'id' | 'date'> & { date
 };
 
 export const updateEntry = async (id: string, updatedEntryData: Partial<JournalEntry>) => {
-    const userId = auth.currentUser?.uid;
+    const userId = getUserId();
     if (!userId) {
         throw new Error('User not authenticated');
     }
@@ -70,7 +74,7 @@ export const updateEntry = async (id: string, updatedEntryData: Partial<JournalE
 };
 
 export const deleteEntry = async (id: string) => {
-    const userId = auth.currentUser?.uid;
+    const userId = getUserId();
     if (!userId) {
         throw new Error('User not authenticated');
     }
