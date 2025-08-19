@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { deleteJournalEntry } from '@/lib/actions';
 import { useSession } from './SessionProvider';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeleteEntryButtonProps {
   id: string;
@@ -24,18 +25,30 @@ interface DeleteEntryButtonProps {
 export function DeleteEntryButton({ id }: DeleteEntryButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useSession();
+  const { toast } = useToast();
 
   const handleDelete = async () => {
     if (!user) {
-        console.error("No user found");
+        toast({
+            title: "Error",
+            description: "You must be logged in to delete an entry.",
+            variant: "destructive"
+        });
         return;
     }
     setIsDeleting(true);
     try {
       await deleteJournalEntry(id, user.uid);
+      toast({
+        title: "Success",
+        description: "Your journal entry has been deleted.",
+      });
     } catch (error) {
-      // In a real app, show a toast notification
-      console.error("Failed to delete entry", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the entry. Please try again.",
+        variant: "destructive"
+    });
       setIsDeleting(false);
     }
   };

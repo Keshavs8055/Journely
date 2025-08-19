@@ -74,7 +74,7 @@ export default function DashboardPage() {
         <div className="space-y-8">
             <Header />
 
-            <DailyReflectionCard prompt={dailyReflectionPrompt} isLoading={isLoading} />
+            <DailyReflectionCard prompt={dailyReflectionPrompt} isLoading={isLoading && !dailyReflectionPrompt} />
 
             <Tabs defaultValue="journals" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -84,6 +84,10 @@ export default function DashboardPage() {
                 <TabsContent value="journals">
                      {isLoading ? (
                         <div className="space-y-4 mt-4">
+                            <div className="flex items-center justify-between">
+                                <Skeleton className="h-8 w-40" />
+                            </div>
+                            <Separator />
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                 <Skeleton className="h-40" />
                                 <Skeleton className="h-40" />
@@ -96,7 +100,11 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="reflections">
                     {isLoading ? (
-                        <div className="space-y-4 mt-4">
+                         <div className="space-y-4 mt-4">
+                            <div className="flex items-center justify-between">
+                                <Skeleton className="h-8 w-40" />
+                            </div>
+                            <Separator />
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                 <Skeleton className="h-40" />
                                 <Skeleton className="h-40" />
