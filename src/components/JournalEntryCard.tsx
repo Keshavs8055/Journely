@@ -13,8 +13,8 @@ export function JournalEntryCard({ entry }: JournalEntryCardProps) {
   const formattedDate = format(new Date(entry.date), 'MMMM d, yyyy');
 
   return (
-    <div className="relative group">
-       <div className="absolute top-4 left-4 z-10">
+    <div className="relative group h-full">
+      <div className="absolute top-4 left-4 z-10">
         <Checkbox
           id={`select-${entry.id}`}
           name="entryIds"
@@ -24,10 +24,10 @@ export function JournalEntryCard({ entry }: JournalEntryCardProps) {
         />
       </div>
       <Link href={`/entry/${entry.id}`} className="block h-full">
-        <Card className="hover:border-primary/80 transition-colors h-full flex flex-col justify-between p-2">
-          <CardHeader className="flex-1">
+        <Card className="hover:border-primary/80 transition-colors h-full flex flex-col">
+          <CardHeader className="flex-grow">
             <CardTitle className="font-headline text-lg line-clamp-2">{entry.title}</CardTitle>
-            <CardDescription>{formattedDate}</CardDescription>
+            <CardDescription className="pt-1">{formattedDate}</CardDescription>
           </CardHeader>
           <CardFooter>
             <div className="flex items-center text-sm text-primary/80 font-medium w-full justify-end">
