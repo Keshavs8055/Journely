@@ -3,6 +3,4 @@ export type JournalEntry = {
   date: string;
   title: string;
   content: string;
-  summary?: string;
-  tone?: string;
 };
