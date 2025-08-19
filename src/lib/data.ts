@@ -1,51 +1,96 @@
+import 'server-only';
+import { db, auth } from './firebase';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import type { JournalEntry } from './types';
+import { unstable_cache as cache } from 'next/cache';
 
-let journalEntries: JournalEntry[] = [
-  {
-    id: '1',
-    date: new Date(Date.now() - 86400000 * 2).toISOString(),
-    title: 'A Walk in the Park',
-    content: 'Today was a beautiful day. I took a long walk in the park and felt the sun on my face. It was peaceful and helped me clear my head. I saw a family of ducks, which was delightful.',
-    summary: 'A peaceful walk in the park cleared the mind and brought moments of delight, like seeing a family of ducks.',
-    tone: 'Positive',
-  },
-  {
-    id: '2',
-    date: new Date(Date.now() - 86400000).toISOString(),
-    title: 'Work Project Stress',
-    content: 'Feeling overwhelmed with the new project at work. The deadline is tight and the requirements are complex. I spent most of the day feeling anxious and unsure of where to start.',
-    summary: 'Feeling overwhelmed and anxious due to a complex work project with a tight deadline.',
-    tone: 'Negative',
-  },
-  {
-    id: '3',
-    date: new Date().toISOString(),
-    title: 'Coffee with a Friend',
-    content: 'Met up with Sarah for coffee this morning. It was so good to catch up and talk about everything. We laughed a lot. I feel so much lighter and more connected now.',
-    summary: 'A joyful and connecting coffee meeting with a friend, resulting in laughter and a feeling of lightness.',
-    tone: 'Joyful',
-  },
-];
-
-export const getEntries = (): JournalEntry[] => {
-  return journalEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-};
-
-export const getEntry = (id: string): JournalEntry | undefined => {
-    return journalEntries.find(entry => entry.id === id);
+async function getUserId(): Promise<string | null> {
+    // In a real app, you would get this from the auth state.
+    // For this implementation, we'll assume a fixed user ID for simplicity
+    // until proper user session management is in place server-side.
+    // A better approach would involve passing the user token from the client
+    // and verifying it on the server.
+    return auth.currentUser?.uid || null;
 }
 
-export const addEntry = (entry: JournalEntry) => {
-  journalEntries.unshift(entry);
-};
-
-export const updateEntry = (updatedEntry: JournalEntry) => {
-    const index = journalEntries.findIndex(entry => entry.id === updatedEntry.id);
-    if (index !== -1) {
-        journalEntries[index] = updatedEntry;
+const getEntriesCollection = async () => {
+    const userId = await getUserId();
+    if (!userId) {
+        throw new Error('User not authenticated');
     }
-}
+    return collection(db, 'users', userId, 'entries');
+};
 
-export const deleteEntry = (id: string) => {
-    journalEntries = journalEntries.filter(entry => entry.id !== id);
-}
+export const getEntries = cache(async (): Promise<JournalEntry[]> => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return [];
+  
+    const entriesCollection = collection(db, 'users', userId, 'entries');
+    const q = query(entriesCollection, orderBy('date', 'desc'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            date: (data.date as Timestamp).toDate().toISOString(),
+        } as JournalEntry;
+    });
+}, ['journal-entries'], { revalidate: 60, tags: ['entries'] });
+
+export const getEntry = cache(async (id: string): Promise<JournalEntry | null> => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return null;
+
+    const entryDocRef = doc(db, 'users', userId, 'entries', id);
+    const docSnap = await getDoc(entryDocRef);
+
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            ...data,
+            date: (data.date as Timestamp).toDate().toISOString(),
+        } as JournalEntry;
+    } else {
+        return null;
+    }
+}, ['journal-entry-by-id'], { revalidate: 60, tags: ['entry'] });
+
+export const addEntry = async (entry: Omit<JournalEntry, 'id' | 'date'> & { date: Date }) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+        throw new Error('User not authenticated');
+    }
+    const entriesCollection = collection(db, 'users', userId, 'entries');
+    const docRef = await addDoc(entriesCollection, {
+        ...entry,
+        date: Timestamp.fromDate(entry.date),
+    });
+    return docRef.id;
+};
+
+export const updateEntry = async (id: string, updatedEntryData: Partial<JournalEntry>) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+        throw new Error('User not authenticated');
+    }
+    const entryDocRef = doc(db, 'users', userId, 'entries', id);
+    
+    const updateData = { ...updatedEntryData };
+    if (updatedEntryData.date) {
+        updateData.date = Timestamp.fromDate(new Date(updatedEntryData.date));
+    }
+
+    await updateDoc(entryDocRef, updateData);
+};
+
+export const deleteEntry = async (id: string) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+        throw new Error('User not authenticated');
+    }
+    const entryDocRef = doc(db, 'users', userId, 'entries', id);
+    await deleteDoc(entryDocRef);
+};

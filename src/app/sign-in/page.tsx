@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,24 @@ export default function SignInPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    const checkRedirect = async () => {
+        setIsLoading(true);
+        try {
+            const result = await getRedirectResult(auth);
+            if (result) {
+                router.push('/');
+            }
+        } catch (error: any) {
+            setError(error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    checkRedirect();
+  }, [router]);
+
+
   const handleAuthAction = async (action: 'signIn' | 'signUp') => {
     setIsLoading(true);
     setError(null);
@@ -54,11 +73,10 @@ export default function SignInPage() {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      router.push('/');
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       setError(error.message);
-    } finally {
+      console.log(error)
       setIsGoogleLoading(false);
     }
   };
@@ -106,8 +124,8 @@ export default function SignInPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button onClick={() => handleAuthAction('signIn')} className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button onClick={() => handleAuthAction('signIn')} className="w-full" disabled={isLoading || isGoogleLoading}>
+                {(isLoading && !isGoogleLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
             </CardFooter>
@@ -145,8 +163,8 @@ export default function SignInPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button onClick={() => handleAuthAction('signUp')} className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button onClick={() => handleAuthAction('signUp')} className="w-full" disabled={isLoading || isGoogleLoading}>
+                {(isLoading && !isGoogleLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign Up
               </Button>
             </CardFooter>
@@ -163,7 +181,7 @@ export default function SignInPage() {
             </div>
         </div>
         <div className="mt-6">
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
                 {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
                 <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 74.3C309 93.5 280.7 80 248 80c-73.2 0-132.3 59.2-132.3 132S174.8 384 248 384c88.8 0 112.3-63.8 115.3-93.2H248v-65.6h239.2c.4 12.3.6 24.6.6 37.2z"></path></svg>
                 }

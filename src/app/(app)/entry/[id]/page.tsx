@@ -8,8 +8,8 @@ import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { DeleteEntryButton } from '@/components/DeleteEntryButton';
 
-export default function EntryPage({ params }: { params: { id: string } }) {
-  const entry = getEntry(params.id);
+export default async function EntryPage({ params }: { params: { id: string } }) {
+  const entry = await getEntry(params.id);
 
   if (!entry) {
     notFound();

@@ -2,16 +2,16 @@
 
 import { summarizeJournalEntry } from '@/ai/flows/summarize-journal-entry';
 import { detectEmotionalTone } from '@/ai/flows/detect-emotional-tone';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { addEntry, updateEntry as dbUpdateEntry, deleteEntry as dbDeleteEntry, getEntry } from '@/lib/data';
+import { auth } from './firebase';
 
 export async function createJournalEntry(formData: FormData) {
   const title = formData.get('title') as string;
   const content = formData.get('content') as string;
 
   if (!title || !content) {
-    // In a real app, you'd want more robust error handling
     return;
   }
 
@@ -27,20 +27,19 @@ export async function createJournalEntry(formData: FormData) {
     tone = toneResult.emotionalTone;
   } catch (error) {
     console.error('AI processing failed:', error);
-    // Proceed to save the entry without AI insights
   }
 
   const newEntry = {
-    id: Date.now().toString(),
-    date: new Date().toISOString(),
+    date: new Date(),
     title,
     content,
     summary,
     tone,
   };
 
-  addEntry(newEntry);
+  await addEntry(newEntry);
 
+  revalidateTag('entries');
   revalidatePath('/');
   redirect('/');
 }
@@ -54,15 +53,14 @@ export async function updateJournalEntry(formData: FormData) {
     return;
   }
   
-  const existingEntry = getEntry(id);
+  const existingEntry = await getEntry(id);
   if (!existingEntry) {
-    return; // Or throw an error
+    return;
   }
 
   let summary = existingEntry.summary;
   let tone = existingEntry.tone;
 
-  // Only re-run AI if content has changed
   if (content !== existingEntry.content) {
     try {
       const [summaryResult, toneResult] = await Promise.all([
@@ -76,30 +74,31 @@ export async function updateJournalEntry(formData: FormData) {
     }
   }
 
-
-  const updatedEntry = {
-    ...existingEntry,
+  const updatedEntryData = {
     title,
     content,
     summary,
     tone,
   };
 
-  dbUpdateEntry(updatedEntry);
+  await dbUpdateEntry(id, updatedEntryData);
 
-  revalidatePath('/');
+  revalidateTag('entries');
+  revalidateTag('entry');
   revalidatePath(`/entry/${id}`);
   redirect(`/entry/${id}`);
 }
 
 export async function deleteJournalEntry(id: string) {
-    dbDeleteEntry(id);
+    await dbDeleteEntry(id);
+    revalidateTag('entries');
     revalidatePath('/');
     redirect('/');
 }
 
 export async function deleteMultipleEntries(formData: FormData) {
     const entryIds = formData.getAll('entryIds') as string[];
-    entryIds.forEach(id => dbDeleteEntry(id));
+    await Promise.all(entryIds.map(id => dbDeleteEntry(id)));
+    revalidateTag('entries');
     revalidatePath('/');
 }

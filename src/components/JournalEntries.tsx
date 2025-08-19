@@ -1,18 +1,21 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { getEntries } from '@/lib/data';
 import { JournalEntryCard } from '@/components/JournalEntryCard';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { deleteMultipleEntries } from '@/lib/actions';
+import type { JournalEntry } from '@/lib/types';
 
-export function JournalEntries() {
+interface JournalEntriesProps {
+    entries: JournalEntry[];
+}
+
+export function JournalEntries({ entries }: JournalEntriesProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
-  const entries = getEntries();
-
+  
   const handleFormChange = (e: React.ChangeEvent<HTMLFormElement>) => {
     const formData = new FormData(e.currentTarget);
     const selected = formData.getAll('entryIds') as string[];
@@ -46,11 +49,18 @@ export function JournalEntries() {
             )}
         </div>
         <Separator />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {entries.map(entry => (
-            <JournalEntryCard key={entry.id} entry={entry} />
-          ))}
-        </div>
+        {entries.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {entries.map(entry => (
+                <JournalEntryCard key={entry.id} entry={entry} />
+            ))}
+            </div>
+        ) : (
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">No journal entries yet.</p>
+                <p className="text-muted-foreground">Why not write your first one?</p>
+            </div>
+        )}
       </div>
     </form>
   );

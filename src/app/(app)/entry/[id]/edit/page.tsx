@@ -6,8 +6,8 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-export default function EditEntryPage({ params }: { params: { id: string } }) {
-  const entry = getEntry(params.id);
+export default async function EditEntryPage({ params }: { params: { id: string } }) {
+  const entry = await getEntry(params.id);
 
   if (!entry) {
     notFound();
