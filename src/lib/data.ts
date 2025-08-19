@@ -1,10 +1,10 @@
-import 'server-only';
-import { db, auth } from './firebase';
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { db } from './firebase';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import type { JournalEntry } from './types';
 import { unstable_cache as cache } from 'next/cache';
 
-export const getEntries = cache(async (userId: string): Promise<JournalEntry[]> => {
+// This function can now be called from client components since it's used in useEffect
+export async function getEntries(userId: string): Promise<JournalEntry[]> {
     if (!userId) return [];
   
     const entriesCollection = collection(db, 'users', userId, 'entries');
@@ -19,21 +19,14 @@ export const getEntries = cache(async (userId: string): Promise<JournalEntry[]> 
             date: (data.date as Timestamp).toDate().toISOString(),
         } as JournalEntry;
     });
-}, ['journal-entries'], { tags: ['entries'] });
+};
 
 
-export const getEntry = cache(async (id: string): Promise<JournalEntry | null> => {
-    // This is not secure, as it doesn't check for user ownership.
-    // In a real app, you would use Firestore security rules.
-    // This function needs the userId to find the correct document.
-    // For now, it will not work as intended.
-    // A better pattern is needed for fetching single entries securely.
-    // To make this work, we'd need to search all users' entries subcollections, which is inefficient.
-    // Or we need the userId.
-    
-    // For now, let's assume this is a known limitation. A fix would be to pass userId.
-    // We will hardcode a user for now to make it work.
-    const entryDocRef = doc(db, 'users', "static-user-id", 'entries', id);
+export async function getEntry(userId: string, id: string): Promise<JournalEntry | null> {
+    if (!userId) {
+        return null;
+    }
+    const entryDocRef = doc(db, 'users', userId, 'entries', id);
     const docSnap = await getDoc(entryDocRef);
 
     if (docSnap.exists()) {
@@ -46,7 +39,7 @@ export const getEntry = cache(async (id: string): Promise<JournalEntry | null> =
     }
     
     return null;
-}, ['journal-entry']);
+};
 
 export const addEntry = async (userId: string, entry: Omit<JournalEntry, 'id' | 'date'> & { date: Date }) => {
     if (!userId) {
