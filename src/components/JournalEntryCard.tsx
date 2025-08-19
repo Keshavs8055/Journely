@@ -1,9 +1,9 @@
 import type { JournalEntry } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
-import { FileText } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface JournalEntryCardProps {
   entry: JournalEntry;
@@ -14,29 +14,26 @@ export function JournalEntryCard({ entry }: JournalEntryCardProps) {
 
   return (
     <div className="relative group">
-      <div className="absolute top-2 left-2 z-10">
+       <div className="absolute top-4 left-4 z-10">
         <Checkbox
           id={`select-${entry.id}`}
           name="entryIds"
           value={entry.id}
-          className="bg-background"
+          className="bg-background/80 backdrop-blur-sm"
           aria-label={`Select entry titled ${entry.title}`}
         />
       </div>
       <Link href={`/entry/${entry.id}`} className="block h-full">
-        <Card className="hover:shadow-md transition-shadow h-full flex flex-col justify-between">
-          <CardHeader>
-            <CardTitle className="font-headline">{entry.title}</CardTitle>
+        <Card className="hover:border-primary/80 transition-colors h-full flex flex-col justify-between p-2">
+          <CardHeader className="flex-1">
+            <CardTitle className="font-headline text-lg line-clamp-2">{entry.title}</CardTitle>
             <CardDescription>{formattedDate}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center text-muted-foreground">
-                <FileText className="mr-2" size={16} />
-                <p>View Entry</p>
-            </div>
-          </CardContent>
           <CardFooter>
-            {/* Footer can be used for other info later */}
+            <div className="flex items-center text-sm text-primary/80 font-medium w-full justify-end">
+                <span>View Entry</span>
+                <ArrowRight size={16} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
           </CardFooter>
         </Card>
       </Link>
