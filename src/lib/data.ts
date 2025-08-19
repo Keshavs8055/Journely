@@ -4,23 +4,6 @@ import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, 
 import type { JournalEntry } from './types';
 import { unstable_cache as cache } from 'next/cache';
 
-async function getUserId(): Promise<string | null> {
-    // In a real app, you would get this from the auth state.
-    // For this implementation, we'll assume a fixed user ID for simplicity
-    // until proper user session management is in place server-side.
-    // A better approach would involve passing the user token from the client
-    // and verifying it on the server.
-    return auth.currentUser?.uid || null;
-}
-
-const getEntriesCollection = async () => {
-    const userId = await getUserId();
-    if (!userId) {
-        throw new Error('User not authenticated');
-    }
-    return collection(db, 'users', userId, 'entries');
-};
-
 export const getEntries = cache(async (): Promise<JournalEntry[]> => {
     const userId = auth.currentUser?.uid;
     if (!userId) return [];
