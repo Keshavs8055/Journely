@@ -11,6 +11,7 @@ import type { JournalEntry } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DailyReflectionForm } from '@/components/DailyReflectionForm';
+import { Separator } from '@/components/ui/separator';
 
 function DailyReflectionCard({ prompt, isLoading }: { prompt: string | null, isLoading: boolean }) {
     return (
