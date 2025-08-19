@@ -30,26 +30,25 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isRedirectLoading, setIsRedirectLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const checkRedirect = async () => {
-        setIsLoading(true);
-        try {
-            const result = await getRedirectResult(auth);
-            if (result) {
-                router.push('/');
-            }
-        } catch (error: any) {
-            setError(error.message);
-        } finally {
-            setIsLoading(false);
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          router.push('/');
+          // No need to set loading to false here, as we are navigating away
+          return;
         }
+      } catch (error: any) {
+        setError(error.message);
+      }
+      setIsRedirectLoading(false);
     };
     checkRedirect();
   }, [router]);
-
 
   const handleAuthAction = async (action: 'signIn' | 'signUp') => {
     setIsLoading(true);
@@ -69,24 +68,33 @@ export default function SignInPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
+    setIsLoading(true); // Also set this to true to disable buttons
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       setError(error.message);
-      console.log(error)
-      setIsGoogleLoading(false);
+      setIsLoading(false);
     }
   };
 
+  if (isRedirectLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4">
-        <div className="mb-8 flex flex-col items-center">
-            <Logo />
-            <p className="text-muted-foreground mt-2">Your personal AI-powered journaling companion.</p>
-        </div>
+      <div className="mb-8 flex flex-col items-center">
+        <Logo />
+        <p className="text-muted-foreground mt-2">
+          Your personal AI-powered journaling companion.
+        </p>
+      </div>
       <Tabs defaultValue="login" className="w-full max-w-sm">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>
@@ -96,9 +104,7 @@ export default function SignInPage() {
           <Card>
             <CardHeader>
               <CardTitle>Login</CardTitle>
-              <CardDescription>
-                Access your journal by logging in.
-              </CardDescription>
+              <CardDescription>Access your journal by logging in.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -124,8 +130,8 @@ export default function SignInPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button onClick={() => handleAuthAction('signIn')} className="w-full" disabled={isLoading || isGoogleLoading}>
-                {(isLoading && !isGoogleLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button onClick={() => handleAuthAction('signIn')} className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
             </CardFooter>
@@ -163,35 +169,35 @@ export default function SignInPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button onClick={() => handleAuthAction('signUp')} className="w-full" disabled={isLoading || isGoogleLoading}>
-                {(isLoading && !isGoogleLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button onClick={() => handleAuthAction('signUp')} className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign Up
               </Button>
             </CardFooter>
           </Card>
         </TabsContent>
-         <div className="relative mt-6">
-            <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-                </span>
-            </div>
+        <div className="relative mt-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
         </div>
         <div className="mt-6">
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
-                {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
-                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 74.3C309 93.5 280.7 80 248 80c-73.2 0-132.3 59.2-132.3 132S174.8 384 248 384c88.8 0 112.3-63.8 115.3-93.2H248v-65.6h239.2c.4 12.3.6 24.6.6 37.2z"></path></svg>
-                }
-                Google
-            </Button>
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
+              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 74.3C309 93.5 280.7 80 248 80c-73.2 0-132.3 59.2-132.3 132S174.8 384 248 384c88.8 0 112.3-63.8 115.3-93.2H248v-65.6h239.2c.4 12.3.6 24.6.6 37.2z"></path></svg>
+            }
+            Google
+          </Button>
         </div>
       </Tabs>
-        {error && (
-            <p className="mt-4 text-sm text-destructive">{error}</p>
-        )}
+      {error && (
+        <p className="mt-4 text-sm text-destructive">{error}</p>
+      )}
     </main>
   );
 }
