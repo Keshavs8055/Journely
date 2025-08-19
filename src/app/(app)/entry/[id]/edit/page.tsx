@@ -1,6 +1,6 @@
 import { getEntry } from '@/lib/data';
 import { notFound } from 'next/navigation';
-import { JournalForm } from '@/components/JournalForm';
+import { EditJournalForm } from '@/components/EditJournalForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -29,7 +29,7 @@ export default async function EditEntryPage({ params }: { params: { id: string }
           <CardDescription>Make changes to your journal entry.</CardDescription>
         </CardHeader>
         <CardContent>
-          <JournalForm entry={entry} />
+          <EditJournalForm entry={entry} />
         </CardContent>
       </Card>
     </div>

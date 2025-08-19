@@ -7,6 +7,7 @@ import { ArrowLeft, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { DeleteEntryButton } from '@/components/DeleteEntryButton';
+import { DecryptedContent } from '@/components/DecryptedContent';
 
 export default async function EntryPage({ params }: { params: { id: string } }) {
   const entry = await getEntry(params.id);
@@ -44,7 +45,7 @@ export default async function EntryPage({ params }: { params: { id: string } }) 
         <Separator />
         <CardContent className="pt-6">
             <div className="prose dark:prose-invert max-w-none">
-                <p className="whitespace-pre-wrap text-base">{entry.content}</p>
+                <DecryptedContent content={entry.content} />
             </div>
         </CardContent>
       </Card>

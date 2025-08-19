@@ -1,19 +1,35 @@
-import { createJournalEntry, updateJournalEntry } from '@/lib/actions';
+'use client';
+
+import { createJournalEntry } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { SubmitButton } from './SubmitButton';
-import type { JournalEntry } from '@/lib/types';
+import { useSession } from './SessionProvider';
+import { encryptContent } from '@/lib/crypto';
 
-interface JournalFormProps {
-    entry?: JournalEntry;
-}
+export function JournalForm() {
+  const { user } = useSession();
 
-export function JournalForm({ entry }: JournalFormProps) {
-  const action = entry ? updateJournalEntry : createJournalEntry;
+  const createJournalEntryWithEncryption = async (formData: FormData) => {
+    if (!user) {
+        // In a real app, you'd want better error handling here.
+        console.error("No user found");
+        return;
+    }
+    const content = formData.get('content') as string;
+    const encryptedContent = await encryptContent(content, user.uid);
+    
+    // Replace original content with encrypted content
+    formData.set('content', encryptedContent);
+    // Add userId to the form data
+    formData.append('userId', user.uid);
+    
+    await createJournalEntry(formData);
+  };
+  
   return (
-    <form action={action} className="space-y-4">
-      {entry && <input type="hidden" name="id" value={entry.id} />}
+    <form action={createJournalEntryWithEncryption} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="title">Title</Label>
         <Input 
@@ -22,7 +38,6 @@ export function JournalForm({ entry }: JournalFormProps) {
           placeholder="What's on your mind?" 
           required 
           className="text-lg"
-          defaultValue={entry?.title}
         />
       </div>
       <div className="space-y-2">
@@ -34,7 +49,6 @@ export function JournalForm({ entry }: JournalFormProps) {
           required 
           rows={15}
           className="text-base"
-          defaultValue={entry?.content}
         />
       </div>
       <SubmitButton />
