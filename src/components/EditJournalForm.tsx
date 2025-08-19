@@ -63,6 +63,9 @@ export function EditJournalForm({ entry }: EditJournalFormProps) {
           className="text-lg"
           defaultValue={entry?.title}
         />
+        <p className="text-sm text-muted-foreground">
+            The title is not encrypted and will be used by our AI to generate personalized reflection prompts for you.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="content">Today's Entry</Label>
@@ -82,6 +85,9 @@ export function EditJournalForm({ entry }: EditJournalFormProps) {
                 key={decryptedContent} // Re-mount component when content is decrypted
             />
         )}
+        <p className="text-sm text-muted-foreground">
+            The content of your entry is end-to-end encrypted for your privacy.
+        </p>
       </div>
       <SubmitButton />
     </form>

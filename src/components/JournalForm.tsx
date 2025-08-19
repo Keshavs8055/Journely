@@ -39,6 +39,9 @@ export function JournalForm() {
           required 
           className="text-lg"
         />
+        <p className="text-sm text-muted-foreground">
+          The title is not encrypted and will be used by our AI to generate personalized reflection prompts for you.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="content">Today's Entry</Label>
@@ -50,6 +53,9 @@ export function JournalForm() {
           rows={15}
           className="text-base"
         />
+        <p className="text-sm text-muted-foreground">
+          The content of your entry is end-to-end encrypted for your privacy.
+        </p>
       </div>
       <SubmitButton />
     </form>
