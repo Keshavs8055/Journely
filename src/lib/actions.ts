@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addEntry, updateEntry as dbUpdateEntry, deleteEntry as dbDeleteEntry, getEntry } from '@/lib/data';
+import { addEntry, updateEntry as dbUpdateEntry, deleteEntry as dbDeleteEntry } from '@/lib/data';
+import { auth } from './firebase';
 
 export async function createJournalEntry(formData: FormData) {
   const title = formData.get('title') as string;
@@ -35,11 +36,6 @@ export async function updateJournalEntry(formData: FormData) {
   if (!id || !title || !content || !userId) {
     return;
   }
-  
-  const existingEntry = await getEntry(id);
-  if (!existingEntry) {
-    return;
-  }
 
   const updatedEntryData = {
     title,
@@ -53,17 +49,23 @@ export async function updateJournalEntry(formData: FormData) {
   redirect(`/entry/${id}`);
 }
 
-export async function deleteJournalEntry(id: string) {
-    // This action needs the userId to revalidate the cache correctly.
-    // A better implementation would get the userId from the session.
-    await dbDeleteEntry("static-user-id", id);
+export async function deleteJournalEntry(id: string, userId: string) {
+    if (!userId) {
+        // Handle error: user not logged in
+        return;
+    }
+    await dbDeleteEntry(userId, id);
     revalidatePath('/');
     redirect('/');
 }
 
 export async function deleteMultipleEntries(formData: FormData) {
     const entryIds = formData.getAll('entryIds') as string[];
-    // A better implementation would get the userId from the session.
-    await Promise.all(entryIds.map(id => dbDeleteEntry("static-user-id", id)));
+    const userId = formData.get('userId') as string;
+    if (!userId) {
+        // Handle error: user not logged in
+        return;
+    }
+    await Promise.all(entryIds.map(id => dbDeleteEntry(userId, id)));
     revalidatePath('/');
 }

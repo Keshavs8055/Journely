@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { deleteJournalEntry } from '@/lib/actions';
+import { useSession } from './SessionProvider';
 
 interface DeleteEntryButtonProps {
   id: string;
@@ -22,11 +23,16 @@ interface DeleteEntryButtonProps {
 
 export function DeleteEntryButton({ id }: DeleteEntryButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const { user } = useSession();
 
   const handleDelete = async () => {
+    if (!user) {
+        console.error("No user found");
+        return;
+    }
     setIsDeleting(true);
     try {
-      await deleteJournalEntry(id);
+      await deleteJournalEntry(id, user.uid);
     } catch (error) {
       // In a real app, show a toast notification
       console.error("Failed to delete entry", error);

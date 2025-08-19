@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { deleteMultipleEntries } from '@/lib/actions';
 import type { JournalEntry } from '@/lib/types';
+import { useSession } from './SessionProvider';
 
 interface JournalEntriesProps {
     entries: JournalEntry[];
@@ -15,6 +16,7 @@ interface JournalEntriesProps {
 export function JournalEntries({ entries }: JournalEntriesProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const { user } = useSession();
   
   const handleFormChange = (e: React.ChangeEvent<HTMLFormElement>) => {
     const formData = new FormData(e.currentTarget);
@@ -24,16 +26,23 @@ export function JournalEntries({ entries }: JournalEntriesProps) {
   
   const hasSelectedEntries = selectedEntries.length > 0;
 
+  const handleSubmit = (formData: FormData) => {
+    if (!user) {
+      console.error("User not found");
+      return;
+    }
+    formData.append('userId', user.uid);
+    startTransition(async () => {
+        await deleteMultipleEntries(formData);
+        setSelectedEntries([]);
+        // Reset checkboxes state visually by resetting the form
+        const form = document.querySelector('form');
+        form?.reset();
+    })
+  }
+
   return (
-    <form onChange={handleFormChange} action={(formData) => {
-        startTransition(async () => {
-            await deleteMultipleEntries(formData);
-            setSelectedEntries([]);
-            // Reset checkboxes state visually by resetting the form
-            const form = document.querySelector('form');
-            form?.reset();
-        })
-    }}>
+    <form onChange={handleFormChange} action={handleSubmit}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-headline">Recent Entries</h2>

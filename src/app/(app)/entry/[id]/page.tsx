@@ -8,8 +8,12 @@ import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { DeleteEntryButton } from '@/components/DeleteEntryButton';
 import { DecryptedContent } from '@/components/DecryptedContent';
+import { auth } from '@/lib/firebase';
 
 export default async function EntryPage({ params }: { params: { id: string } }) {
+  // This needs a userId to fetch securely.
+  // Let's assume we can't get it here for now.
+  // A better pattern is needed.
   const entry = await getEntry(params.id);
 
   if (!entry) {
