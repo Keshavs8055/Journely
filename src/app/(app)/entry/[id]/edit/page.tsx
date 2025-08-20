@@ -12,7 +12,8 @@ import { useSession } from '@/components/SessionProvider';
 import { Suspense } from 'react';
 import type { JournalEntry } from '@/lib/types';
 
-// This is now a Server Component responsible for data fetching.
+// This is a Server Component responsible for data fetching.
+// It is NOT marked with 'use client'.
 async function EditEntryView({ userId, entryId }: { userId: string, entryId: string }) {
   const entry = await getEntry(userId, entryId) as JournalEntry;
 
@@ -50,7 +51,11 @@ export default function EditEntryPage({ params }: { params: { id: string } }) {
   if (!user) {
     // Session loading or user not authenticated.
     // The AppLayout will handle the redirect.
-    return null; 
+    return (
+        <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
   }
 
   return (
