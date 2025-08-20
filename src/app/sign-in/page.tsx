@@ -256,7 +256,7 @@ export default function SignInPage() {
               <CardDescription>
                 Create an account to start journaling.
               </CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
@@ -316,5 +316,3 @@ export default function SignInPage() {
     </main>
   );
 }
-
-    
