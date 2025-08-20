@@ -17,7 +17,8 @@ import type { JournalEntry } from '@/lib/types';
 
 export default function EntryPage({ params }: { params: { id: string } }) {
   const { user } = useSession();
-  const id = params.id;
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
 
   if (!user) {
     // Session loading or user not authenticated.
