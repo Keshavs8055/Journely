@@ -6,6 +6,10 @@ import { SubmitButton } from './SubmitButton';
 import { useSession } from './SessionProvider';
 import { encryptContent } from '@/lib/crypto';
 import { Label } from './ui/label';
+import { useState, useEffect, useRef } from 'react';
+import { useToast } from '@/hooks/use-toast';
+
+const DRAFT_KEY = 'reflectionDraft';
 
 interface DailyReflectionFormProps {
     prompt: string | null;
@@ -13,34 +17,72 @@ interface DailyReflectionFormProps {
 
 export function DailyReflectionForm({ prompt }: DailyReflectionFormProps) {
   const { user } = useSession();
+  const { toast } = useToast();
+  const [content, setContent] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(DRAFT_KEY);
+      if (savedDraft) {
+        setContent(JSON.parse(savedDraft));
+      }
+    } catch (error) {
+      console.error("Could not load reflection draft", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(content));
+    } catch (error) {
+       console.error("Could not save reflection draft", error);
+    }
+  }, [content]);
 
   const createReflectionEntry = async (formData: FormData) => {
     if (!user) {
-        console.error("No user found");
+        toast({
+            title: "Error",
+            description: "You must be logged in to save a reflection.",
+            variant: "destructive"
+        });
         return;
     }
-    const content = formData.get('content') as string;
+    const currentContent = formData.get('content') as string;
 
-    if (!content.trim()) {
-        // Simple validation to prevent empty submissions
+    if (!currentContent.trim()) {
+        toast({
+            title: "Error",
+            description: "Reflection content cannot be empty.",
+            variant: "destructive"
+        });
         return;
     }
 
-    const encryptedContent = await encryptContent(content, user.uid);
+    const encryptedContent = await encryptContent(currentContent, user.uid);
     
     formData.set('content', encryptedContent);
     formData.append('userId', user.uid);
     formData.append('type', 'reflection');
     
-    await createJournalEntry(formData);
-
-    // Reset the form after submission
-    const form = document.getElementById('reflection-form') as HTMLFormElement;
-    form?.reset();
+    try {
+        await createJournalEntry(formData);
+        // Reset the form and clear draft after successful submission
+        setContent('');
+        formRef.current?.reset();
+        localStorage.removeItem(DRAFT_KEY);
+    } catch (error) {
+        toast({
+            title: "Error",
+            description: "Failed to save your reflection. Please try again.",
+            variant: "destructive"
+        });
+    }
   };
   
   return (
-    <form id="reflection-form" action={createReflectionEntry} className="space-y-4">
+    <form ref={formRef} id="reflection-form" action={createReflectionEntry} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="content">{prompt}</Label>
         <Textarea 
@@ -50,6 +92,8 @@ export function DailyReflectionForm({ prompt }: DailyReflectionFormProps) {
           required 
           rows={5}
           className="text-base bg-background/50"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
         />
          <p className="text-sm text-muted-foreground">
           Your reflection is end-to-end encrypted for your privacy.
