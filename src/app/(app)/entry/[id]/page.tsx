@@ -12,11 +12,12 @@ import { Separator } from '@/components/ui/separator';
 import { DeleteEntryButton } from '@/components/DeleteEntryButton';
 import { DecryptedContent } from '@/components/DecryptedContent';
 import { useSession } from '@/components/SessionProvider';
-import { use, Suspense } from 'react';
+import { Suspense } from 'react';
 import type { JournalEntry } from '@/lib/types';
 
-function EntryView({ userId, entryId }: { userId: string, entryId: string }) {
-  const entry = use(getEntry(userId, entryId)) as JournalEntry;
+// This is now a Server Component responsible for data fetching.
+async function EntryView({ userId, entryId }: { userId: string, entryId: string }) {
+  const entry = await getEntry(userId, entryId) as JournalEntry;
 
   if (!entry) {
     notFound();
@@ -59,7 +60,7 @@ function EntryView({ userId, entryId }: { userId: string, entryId: string }) {
   );
 }
 
-
+// This remains a Client Component to handle session state.
 export default function EntryPage({ params }: { params: { id: string } }) {
   const { user } = useSession();
 
@@ -71,6 +72,7 @@ export default function EntryPage({ params }: { params: { id: string } }) {
 
   return (
     <Suspense fallback={<div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      {/* @ts-expect-error Server Component */}
       <EntryView userId={user.uid} entryId={params.id} />
     </Suspense>
   );

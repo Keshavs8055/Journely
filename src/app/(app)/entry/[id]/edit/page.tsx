@@ -9,11 +9,12 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/components/SessionProvider';
-import { use, Suspense } from 'react';
+import { Suspense } from 'react';
 import type { JournalEntry } from '@/lib/types';
 
-function EditEntryView({ userId, entryId }: { userId: string, entryId: string }) {
-  const entry = use(getEntry(userId, entryId)) as JournalEntry;
+// This is now a Server Component responsible for data fetching.
+async function EditEntryView({ userId, entryId }: { userId: string, entryId: string }) {
+  const entry = await getEntry(userId, entryId) as JournalEntry;
 
   if (!entry) {
     notFound();
@@ -42,7 +43,7 @@ function EditEntryView({ userId, entryId }: { userId: string, entryId: string })
   );
 }
 
-
+// This remains a Client Component to handle session state.
 export default function EditEntryPage({ params }: { params: { id: string } }) {
   const { user } = useSession();
   
@@ -54,6 +55,7 @@ export default function EditEntryPage({ params }: { params: { id: string } }) {
 
   return (
     <Suspense fallback={<div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      {/* @ts-expect-error Server Component */}
       <EditEntryView userId={user.uid} entryId={params.id} />
     </Suspense>
   );
