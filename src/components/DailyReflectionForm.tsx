@@ -85,6 +85,7 @@ export function DailyReflectionForm({ prompt, onReflectionSubmit }: DailyReflect
   
   return (
     <form ref={formRef} id="reflection-form" action={createReflectionEntry} className="space-y-4">
+      <input type="hidden" name="title" value={prompt || 'Daily Reflection'} />
       <div className="space-y-2">
         <Label htmlFor="content">{prompt}</Label>
         <Textarea 
