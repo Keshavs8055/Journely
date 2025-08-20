@@ -13,9 +13,10 @@ const DRAFT_KEY = 'reflectionDraft';
 
 interface DailyReflectionFormProps {
     prompt: string | null;
+    onReflectionSubmit: () => void;
 }
 
-export function DailyReflectionForm({ prompt }: DailyReflectionFormProps) {
+export function DailyReflectionForm({ prompt, onReflectionSubmit }: DailyReflectionFormProps) {
   const { user } = useSession();
   const { toast } = useToast();
   const [content, setContent] = useState('');
@@ -72,6 +73,7 @@ export function DailyReflectionForm({ prompt }: DailyReflectionFormProps) {
         setContent('');
         formRef.current?.reset();
         localStorage.removeItem(DRAFT_KEY);
+        onReflectionSubmit(); // Notify parent that submission was successful
     } catch (error) {
         toast({
             title: "Error",
