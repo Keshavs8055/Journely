@@ -1,4 +1,6 @@
 
+'use client';
+
 import { getEntry } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,12 +52,10 @@ function EntryClientView({ entry }: { entry: JournalEntry }) {
   );
 }
 
-// Server Component to fetch data
+// This page remains a Server Component by default (no 'use client')
 export default async function EntryPage({ params }: { params: { id: string } }) {
-  // NOTE: This runs on the server, so auth needs to be checked differently.
-  // For this app, we assume if the user can get the entry, they are authorized.
-  // In a real app, you'd get the server-side session here.
-  const entry = await getEntry('user-placeholder', params.id); // Placeholder for server-side user ID
+  // NOTE: This runs on the server. We can safely await the data fetching here.
+  const entry = await getEntry('user-placeholder', params.id);
 
   if (!entry) {
     notFound();

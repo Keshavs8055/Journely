@@ -8,9 +8,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import type { JournalEntry } from '@/lib/types';
 
-// Server Component to fetch data
+// This is now an async Server Component, which is the correct pattern.
 export default async function EditEntryPage({ params }: { params: { id: string } }) {
-  // NOTE: This runs on the server.
+  // We fetch the data on the server.
   const entry = await getEntry('user-placeholder', params.id) as JournalEntry;
 
   if (!entry) {
@@ -33,6 +33,7 @@ export default async function EditEntryPage({ params }: { params: { id: string }
           <CardDescription>Make changes to your journal entry.</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* The entry data is passed as a prop to the Client Component */}
           <EditJournalForm entry={entry} />
         </CardContent>
       </Card>
