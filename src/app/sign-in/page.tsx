@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -75,14 +76,16 @@ export default function SignInPage() {
       try {
         const result = await getRedirectResult(auth);
         if (result) {
+          // User signed in or signed up.
           router.push('/');
-          return;
+          return; // Stop execution to avoid setting loading to false
         }
       } catch (error: any) {
         if (error.code !== 'auth/popup-closed-by-user') {
             setError(getAuthErrorMessage(error.code));
         }
       }
+      // Only set loading to false if there is no redirect result.
       setIsRedirectLoading(false);
     };
     checkRedirect();
@@ -142,6 +145,7 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setIsRedirectLoading(true); // Show loader while redirect is processed
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
@@ -149,6 +153,7 @@ export default function SignInPage() {
     } catch (error: any) {
       setError(getAuthErrorMessage(error.code));
       setIsLoading(false);
+      setIsRedirectLoading(false);
     }
   };
 
