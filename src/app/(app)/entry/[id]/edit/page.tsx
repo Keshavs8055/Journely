@@ -1,29 +1,19 @@
+
 'use client';
 
 import { getEntry } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { EditJournalForm } from '@/components/EditJournalForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/components/SessionProvider';
-import { use } from 'react';
+import { use, Suspense } from 'react';
 import type { JournalEntry } from '@/lib/types';
 
-
-export default function EditEntryPage({ params }: { params: { id: string } }) {
-  const { user } = useSession();
-  const resolvedParams = use(params);
-  const id = resolvedParams.id;
-  
-  if (!user) {
-    // Session loading or user not authenticated.
-    // The AppLayout will handle the redirect.
-    return null; 
-  }
-
-  const entry = use(getEntry(user.uid, id)) as JournalEntry;
+function EditEntryView({ userId, entryId }: { userId: string, entryId: string }) {
+  const entry = use(getEntry(userId, entryId)) as JournalEntry;
 
   if (!entry) {
     notFound();
@@ -49,5 +39,22 @@ export default function EditEntryPage({ params }: { params: { id: string } }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+
+export default function EditEntryPage({ params }: { params: { id: string } }) {
+  const { user } = useSession();
+  
+  if (!user) {
+    // Session loading or user not authenticated.
+    // The AppLayout will handle the redirect.
+    return null; 
+  }
+
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <EditEntryView userId={user.uid} entryId={params.id} />
+    </Suspense>
   );
 }
