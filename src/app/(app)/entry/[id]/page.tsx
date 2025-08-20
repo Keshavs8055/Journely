@@ -1,6 +1,4 @@
 
-'use client';
-
 import { getEntry } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,55 +10,19 @@ import { Separator } from '@/components/ui/separator';
 import { DeleteEntryButton } from '@/components/DeleteEntryButton';
 import { DecryptedContent } from '@/components/DecryptedContent';
 import type { JournalEntry } from '@/lib/types';
+import { ClientView } from './ClientView';
 
-// Client Component to handle decryption and interactive elements
-function EntryClientView({ entry }: { entry: JournalEntry }) {
-  const formattedDate = format(new Date(entry.date), 'MMMM d, yyyy');
-
-  return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      <div className="flex justify-between items-center">
-        <Button variant="ghost" asChild>
-          <Link href="/" className="flex items-center gap-2 text-muted-foreground">
-            <ArrowLeft size={16} />
-            Back to Dashboard
-          </Link>
-        </Button>
-        <div className="flex gap-2">
-            <Button variant="outline" asChild>
-                <Link href={`/entry/${entry.id}/edit`}>
-                    <Edit size={16} className="mr-2"/>
-                    Edit
-                </Link>
-            </Button>
-            <DeleteEntryButton id={entry.id} />
-        </div>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline text-3xl">{entry.title}</CardTitle>
-          <CardDescription>{formattedDate}</CardDescription>
-        </CardHeader>
-        <Separator />
-        <CardContent className="pt-6">
-            <div className="prose dark:prose-invert max-w-none">
-                <DecryptedContent content={entry.content} />
-            </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// This page remains a Server Component by default (no 'use client')
+// This is now an async Server Component, which is the correct pattern.
 export default async function EntryPage({ params }: { params: { id: string } }) {
-  // NOTE: This runs on the server. We can safely await the data fetching here.
+  // We fetch the data on the server.
+  // The 'user-placeholder' is used because server components don't have client-side auth context.
+  // Firestore security rules will enforce ownership.
   const entry = await getEntry('user-placeholder', params.id);
 
   if (!entry) {
     notFound();
   }
 
-  // Pass server-fetched data to the client component
-  return <EntryClientView entry={entry} />;
+  // We pass the server-fetched data as a prop to the Client Component.
+  return <ClientView entry={entry} />;
 }
