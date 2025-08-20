@@ -10,6 +10,7 @@ import {
   getRedirectResult,
   sendPasswordResetEmail,
   sendEmailVerification,
+  AuthErrorCodes,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,25 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+const getAuthErrorMessage = (code: string) => {
+    switch (code) {
+        case AuthErrorCodes.INVALID_EMAIL:
+            return "Invalid email address format.";
+        case AuthErrorCodes.USER_DELETED:
+            return "This user account has been deleted.";
+        case AuthErrorCodes.INVALID_PASSWORD:
+            return "Incorrect password. Please try again.";
+        case AuthErrorCodes.EMAIL_EXISTS:
+            return "An account with this email already exists.";
+        case 'auth/missing-password':
+            return "Please enter a password.";
+        case 'auth/weak-password':
+            return 'Password should be at least 6 characters.';
+        default:
+            return "An unexpected error occurred. Please try again.";
+    }
+}
+
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,7 +80,7 @@ export default function SignInPage() {
         }
       } catch (error: any) {
         if (error.code !== 'auth/popup-closed-by-user') {
-            setError(error.message);
+            setError(getAuthErrorMessage(error.code));
         }
       }
       setIsRedirectLoading(false);
@@ -84,12 +104,13 @@ export default function SignInPage() {
         if (!userCredential.user.emailVerified) {
             setError('Please verify your email before logging in. Another verification email has been sent.');
             await sendEmailVerification(userCredential.user);
+            setIsLoading(false);
             return;
         }
         router.push('/');
       }
     } catch (error: any) {
-      setError(error.message);
+      setError(getAuthErrorMessage(error.code));
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +134,7 @@ export default function SignInPage() {
             description: "A password reset email has been sent to your address.",
         });
     } catch (error: any) {
-        setError(error.message);
+        setError(getAuthErrorMessage(error.code));
     } finally {
         setIsLoading(false);
     }
@@ -126,7 +147,7 @@ export default function SignInPage() {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      setError(error.message);
+      setError(getAuthErrorMessage(error.code));
       setIsLoading(false);
     }
   };

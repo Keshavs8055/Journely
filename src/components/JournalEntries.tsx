@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { JournalEntryCard } from '@/components/JournalEntryCard';
-import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { deleteMultipleEntries } from '@/lib/actions';
 import type { JournalEntry } from '@/lib/types';
 import { useSession } from './SessionProvider';
 import { useToast } from '@/hooks/use-toast';
+import { PlusCircle } from 'lucide-react';
+import Link from 'next/link';
 
 interface JournalEntriesProps {
     entries: JournalEntry[];
@@ -65,7 +66,7 @@ export function JournalEntries({ entries, onEntriesChange }: JournalEntriesProps
 
   return (
     <form name="journal-entries-form" onChange={handleFormChange} action={handleSubmit}>
-      <div className="space-y-4">
+      <div className="space-y-4 mt-4">
         <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-headline">Recent Entries</h2>
             {hasSelectedEntries && (
@@ -79,7 +80,6 @@ export function JournalEntries({ entries, onEntriesChange }: JournalEntriesProps
                 </Button>
             )}
         </div>
-        <Separator />
         {entries.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {entries.map(entry => (
@@ -87,9 +87,14 @@ export function JournalEntries({ entries, onEntriesChange }: JournalEntriesProps
             ))}
             </div>
         ) : (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground">No journal entries yet.</p>
-                <p className="text-muted-foreground">Why not write your first one?</p>
+            <div className="text-center py-12 rounded-lg border-2 border-dashed border-muted-foreground/20">
+                <p className="text-muted-foreground mb-4">You haven't written any entries yet.</p>
+                <Button asChild>
+                    <Link href="/new-entry">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Write your first entry
+                    </Link>
+                </Button>
             </div>
         )}
       </div>
