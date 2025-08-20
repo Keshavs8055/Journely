@@ -70,11 +70,11 @@ export async function deleteJournalEntry(id: string, userId: string) {
         }
         await dbDeleteEntry(userId, id);
         revalidatePath('/');
+        return { success: true };
     } catch(error) {
         const message = error instanceof Error ? error.message : "An unknown error occurred.";
-        // We can't handle this return value yet as it's not a form action
+        return { success: false, error: message };
     }
-    redirect('/');
 }
 
 export async function deleteMultipleEntries(formData: FormData) {

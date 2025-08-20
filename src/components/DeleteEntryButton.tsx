@@ -17,6 +17,7 @@ import { Trash2, Loader2 } from 'lucide-react';
 import { deleteJournalEntry } from '@/lib/actions';
 import { useSession } from './SessionProvider';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface DeleteEntryButtonProps {
   id: string;
@@ -26,6 +27,7 @@ export function DeleteEntryButton({ id }: DeleteEntryButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleDelete = async () => {
     if (!user) {
@@ -38,11 +40,16 @@ export function DeleteEntryButton({ id }: DeleteEntryButtonProps) {
     }
     setIsDeleting(true);
     try {
-      await deleteJournalEntry(id, user.uid);
-      toast({
-        title: "Success",
-        description: "Your journal entry has been deleted.",
-      });
+      const result = await deleteJournalEntry(id, user.uid);
+      if (result.success) {
+        toast({
+            title: "Success",
+            description: "Your journal entry has been deleted.",
+        });
+        router.push('/');
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       toast({
         title: "Error",
