@@ -1,21 +1,17 @@
 
-'use client';
-
 import { getEntry } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { EditJournalForm } from '@/components/EditJournalForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useSession } from '@/components/SessionProvider';
-import { Suspense } from 'react';
 import type { JournalEntry } from '@/lib/types';
 
-// This is a Server Component responsible for data fetching.
-// It is NOT marked with 'use client'.
-async function EditEntryView({ userId, entryId }: { userId: string, entryId: string }) {
-  const entry = await getEntry(userId, entryId) as JournalEntry;
+// Server Component to fetch data
+export default async function EditEntryPage({ params }: { params: { id: string } }) {
+  // NOTE: This runs on the server.
+  const entry = await getEntry('user-placeholder', params.id) as JournalEntry;
 
   if (!entry) {
     notFound();
@@ -41,27 +37,5 @@ async function EditEntryView({ userId, entryId }: { userId: string, entryId: str
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-// This remains a Client Component to handle session state.
-export default function EditEntryPage({ params }: { params: { id: string } }) {
-  const { user } = useSession();
-  
-  if (!user) {
-    // Session loading or user not authenticated.
-    // The AppLayout will handle the redirect.
-    return (
-        <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-    );
-  }
-
-  return (
-    <Suspense fallback={<div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-      {/* @ts-expect-error Server Component */}
-      <EditEntryView userId={user.uid} entryId={params.id} />
-    </Suspense>
   );
 }
