@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { getEntry } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,63 +11,24 @@ import { Separator } from '@/components/ui/separator';
 import { DeleteEntryButton } from '@/components/DeleteEntryButton';
 import { DecryptedContent } from '@/components/DecryptedContent';
 import { useSession } from '@/components/SessionProvider';
+import { use } from 'react';
 import type { JournalEntry } from '@/lib/types';
-import { Skeleton } from '@/components/ui/skeleton';
-
-function EntryPageSkeleton() {
-    return (
-        <Card>
-            <CardHeader>
-                <Skeleton className="h-10 w-3/4" />
-                <Skeleton className="h-4 w-1/4" />
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-6">
-                <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 
 export default function EntryPage({ params }: { params: { id: string } }) {
   const { user } = useSession();
-  const [entry, setEntry] = useState<JournalEntry | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const id = params.id;
 
-  useEffect(() => {
-    async function fetchEntry() {
-      if (user) {
-        setIsLoading(true);
-        const fetchedEntry = await getEntry(user.uid, params.id);
-        if (!fetchedEntry) {
-          notFound();
-        }
-        setEntry(fetchedEntry);
-        setIsLoading(false);
-      }
-    }
-    fetchEntry();
-  }, [user, params.id]);
+  if (!user) {
+    // Session loading or user not authenticated.
+    // The AppLayout will handle the redirect.
+    return null;
+  }
 
-  if (isLoading || !entry) {
-    return (
-        <div className="max-w-3xl mx-auto space-y-4">
-            <div className="flex justify-between items-center">
-                <Button variant="ghost" asChild>
-                <Link href="/" className="flex items-center gap-2 text-muted-foreground">
-                    <ArrowLeft size={16} />
-                    Back to Dashboard
-                </Link>
-                </Button>
-            </div>
-            <EntryPageSkeleton />
-        </div>
-    );
+  const entry = use(getEntry(user.uid, id)) as JournalEntry;
+
+  if (!entry) {
+    notFound();
   }
   
   const formattedDate = format(new Date(entry.date), 'MMMM d, yyyy');
