@@ -151,7 +151,10 @@ export default function SignInPage() {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      setError(getAuthErrorMessage(error.code));
+      // Don't show an error if the user closes the sign-in popup.
+      if (error.code !== 'auth/popup-closed-by-user') {
+        setError(getAuthErrorMessage(error.code));
+      }
       setIsLoading(false);
       setIsRedirectLoading(false);
     }
@@ -253,7 +256,7 @@ export default function SignInPage() {
               <CardDescription>
                 Create an account to start journaling.
               </CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
@@ -313,3 +316,5 @@ export default function SignInPage() {
     </main>
   );
 }
+
+    
