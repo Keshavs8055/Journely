@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DailyReflectionForm } from '@/components/DailyReflectionForm';
 import { Separator } from '@/components/ui/separator';
 
+const DAILY_PROMPT_KEY = 'dailyReflectionPrompt';
+
 function DailyReflectionCard({ prompt, isLoading }: { prompt: string | null, isLoading: boolean }) {
     return (
         <Card className="bg-primary/20 border-primary/40">
@@ -50,21 +52,37 @@ export default function DashboardPage() {
                 const fetchedEntries = await getEntries(user.uid);
                 setEntries(fetchedEntries);
 
+                const today = new Date().toISOString().split('T')[0];
                 const journals = fetchedEntries.filter(e => e.type === 'journal');
 
-                if (journals.length > 0) {
-                    try {
+                try {
+                    const savedPromptItem = localStorage.getItem(DAILY_PROMPT_KEY);
+                    if (savedPromptItem) {
+                        const savedPrompt = JSON.parse(savedPromptItem);
+                        if (savedPrompt.date === today) {
+                            setDailyReflectionPrompt(savedPrompt.prompt);
+                            setIsLoading(false);
+                            return; // We have a prompt for today, no need to fetch.
+                        }
+                    }
+
+                    // No valid prompt for today, generate a new one.
+                    let newPrompt: string;
+                    if (journals.length > 0) {
                         const entryTitles = journals.map(e => e.title).join('\n');
                         const result = await generateReflectionPrompt({ journalEntries: entryTitles });
-                        setDailyReflectionPrompt(result.reflectionPrompt);
-                    } catch (error) {
-                        console.error("Failed to generate reflection prompt:", error);
-                        setDailyReflectionPrompt("What was the most significant moment of your day?");
+                        newPrompt = result.reflectionPrompt;
+                    } else {
+                        newPrompt = "What are you grateful for today?";
                     }
-                } else {
-                    setDailyReflectionPrompt("What are you grateful for today?");
+                    setDailyReflectionPrompt(newPrompt);
+                    localStorage.setItem(DAILY_PROMPT_KEY, JSON.stringify({ prompt: newPrompt, date: today }));
+                } catch (error) {
+                    console.error("Failed to generate or retrieve reflection prompt:", error);
+                    setDailyReflectionPrompt("What was the most significant moment of your day?");
+                } finally {
+                    setIsLoading(false);
                 }
-                setIsLoading(false);
             }
         }
         fetchData();
