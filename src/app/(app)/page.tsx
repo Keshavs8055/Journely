@@ -82,35 +82,38 @@ export default function DashboardPage() {
     }, [refreshEntries]);
 
     useEffect(() => {
-        async function managePrompt() {
-            if (!user) return;
-            setIsPromptLoading(true);
-
+        async function getOrCreatePrompt(journalContext: JournalEntry[]) {
             const savedPrompt = localStorage.getItem(PROMPT_KEY);
             const savedDate = localStorage.getItem(PROMPT_DATE_KEY);
             const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
             if (savedPrompt && savedDate === today) {
-                setReflectionPrompt(savedPrompt);
-            } else {
-                try {
-                    const journals = journalEntries.length > 0 ? journalEntries : entries.filter(e => e.type === 'journal');
-                    let newPrompt: string;
-                    if (journals.length > 0) {
-                        const entryTitles = journals.map(e => e.title).join('\n');
-                        const result = await generateReflectionPrompt({ journalEntries: entryTitles });
-                        newPrompt = result.reflectionPrompt;
-                    } else {
-                        newPrompt = "What are you grateful for today?";
-                    }
-                    setReflectionPrompt(newPrompt);
-                    localStorage.setItem(PROMPT_KEY, newPrompt);
-                    localStorage.setItem(PROMPT_DATE_KEY, today);
-                } catch (error) {
-                    console.error("Failed to generate reflection prompt:", error);
-                    setReflectionPrompt("What was the most significant moment of your day?");
-                }
+                return savedPrompt;
             }
+
+            try {
+                let newPrompt: string;
+                if (journalContext.length > 0) {
+                    const entryTitles = journalContext.map(e => e.title).join('\n');
+                    const result = await generateReflectionPrompt({ journalEntries: entryTitles });
+                    newPrompt = result.reflectionPrompt;
+                } else {
+                    newPrompt = "What are you grateful for today?";
+                }
+                localStorage.setItem(PROMPT_KEY, newPrompt);
+                localStorage.setItem(PROMPT_DATE_KEY, today);
+                return newPrompt;
+            } catch (error) {
+                console.error("Failed to generate reflection prompt:", error);
+                return "What was the most significant moment of your day?";
+            }
+        }
+        
+        async function managePrompt() {
+            if (!user) return;
+            setIsPromptLoading(true);
+            const prompt = await getOrCreatePrompt(journalEntries);
+            setReflectionPrompt(prompt);
             setIsPromptLoading(false);
         }
 
@@ -118,7 +121,7 @@ export default function DashboardPage() {
         if (!isLoading) {
             managePrompt();
         }
-    }, [user, entries, isLoading]); // depends on entries to get context for new prompts
+    }, [user, entries, isLoading, journalEntries]);
 
     return (
         <div className="space-y-8">
