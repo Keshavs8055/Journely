@@ -1,13 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
 import { JournalEntryCard } from '@/components/JournalEntryCard';
 import { Button } from '@/components/ui/button';
-import { Trash2, Loader2 } from 'lucide-react';
-import { deleteMultipleEntries } from '@/lib/actions';
 import type { JournalEntry } from '@/lib/types';
-import { useSession } from './SessionProvider';
-import { useToast } from '@/hooks/use-toast';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,7 +11,7 @@ interface JournalEntriesProps {
     onEntriesChange: () => void;
 }
 
-export function JournalEntries({ entries, onEntriesChange }: JournalEntriesProps) {
+export function JournalEntries({ entries }: JournalEntriesProps) {
   
   return (
     <div className="space-y-4 mt-4">

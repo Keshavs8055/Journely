@@ -109,7 +109,6 @@ export default function DashboardPage() {
                 const fetchedEntries = await getEntries(user.uid);
                 setEntries(fetchedEntries);
 
-                // Re-evaluate prompt logic after fetching entries
                 const journalContext = fetchedEntries.filter(e => e.type === 'journal');
                 
                 const savedPrompt = localStorage.getItem(PROMPT_KEY);

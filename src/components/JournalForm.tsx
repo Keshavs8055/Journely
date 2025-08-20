@@ -1,130 +1,157 @@
 'use client';
 
-import { createJournalEntry } from '@/lib/actions';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { SubmitButton } from './SubmitButton';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useSession } from './SessionProvider';
 import { encryptContent } from '@/lib/crypto';
-import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { addEntry } from '@/lib/data';
+import { Loader2 } from 'lucide-react';
 
 const DRAFT_KEY = 'journalDraft';
+
+const formSchema = z.object({
+  title: z.string().min(1, 'Title is required.'),
+  content: z.string().min(1, 'Content cannot be empty.'),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 export function JournalForm() {
   const { user } = useSession();
   const { toast } = useToast();
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+    },
+  });
 
   useEffect(() => {
     try {
       const savedDraft = localStorage.getItem(DRAFT_KEY);
       if (savedDraft) {
         const { title, content } = JSON.parse(savedDraft);
-        setTitle(title || '');
-        setContent(content || '');
+        form.reset({ title: title || '', content: content || '' });
       }
     } catch (error) {
       console.error("Could not load draft from localStorage", error);
     }
-  }, []);
+  }, [form]);
 
   useEffect(() => {
-    try {
-      const draft = JSON.stringify({ title, content });
-      localStorage.setItem(DRAFT_KEY, draft);
-    } catch (error) {
-      console.error("Could not save draft to localStorage", error);
-    }
-  }, [title, content]);
+    const subscription = form.watch((value) => {
+      try {
+        const draft = JSON.stringify(value);
+        localStorage.setItem(DRAFT_KEY, draft);
+      } catch (error) {
+        console.error("Could not save draft to localStorage", error);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
-  const createJournalEntryWithEncryption = async (formData: FormData) => {
+  const onSubmit = async (data: FormData) => {
     if (!user) {
       toast({
-        title: "Error",
+        title: "Authentication Error",
         description: "You must be logged in to create an entry.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    const currentContent = formData.get('content') as string;
-    if (!currentContent.trim()) {
+    setIsSubmitting(true);
+
+    try {
+      const encryptedContent = await encryptContent(data.content, user.uid);
+      const newEntry = {
+        date: new Date(),
+        title: data.title,
+        content: encryptedContent,
+        type: 'journal' as const,
+      };
+
+      await addEntry(user.uid, newEntry);
+      
+      localStorage.removeItem(DRAFT_KEY);
+      toast({
+        title: "Success!",
+        description: "Your journal entry has been saved.",
+      });
+      router.push('/');
+      router.refresh(); // Refresh server components
+    } catch (error) {
+      console.error("Failed to create entry:", error);
       toast({
         title: "Error",
-        description: "Entry content cannot be empty.",
-        variant: "destructive"
+        description: "Failed to save your entry. Please try again.",
+        variant: "destructive",
       });
-      return;
-    }
-    
-    const encryptedContent = await encryptContent(currentContent, user.uid);
-    
-    formData.set('content', encryptedContent);
-    formData.append('userId', user.uid);
-    formData.append('type', 'journal');
-    
-    const result = await createJournalEntry(formData);
-    
-    if (result.success) {
-        // Clear draft on successful submission
-        setTitle('');
-        setContent('');
-        formRef.current?.reset();
-        localStorage.removeItem(DRAFT_KEY);
-        toast({
-            title: "Success!",
-            description: "Your journal entry has been saved.",
-        });
-        router.push('/');
-    } else {
-        toast({
-            title: "Error",
-            description: result.error || "Failed to save your entry. Please try again.",
-            variant: "destructive"
-        });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
+
   return (
-    <form ref={formRef} action={createJournalEntryWithEncryption} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
-        <Input 
-          id="title" 
-          name="title" 
-          placeholder="What's on your mind?" 
-          required 
-          className="text-lg"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Title</FormLabel>
+              <FormControl>
+                <Input placeholder="What's on your mind?" className="text-lg" {...field} />
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                The title is not encrypted and will be used by our AI to generate personalized reflection prompts for you.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <p className="text-sm text-muted-foreground">
-          The title is not encrypted and will be used by our AI to generate personalized reflection prompts for you.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="content">Today's Entry</Label>
-        <Textarea 
-          id="content" 
-          name="content" 
-          placeholder="Tell me about your day..." 
-          required 
-          rows={15}
-          className="text-base"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+        <FormField
+          control={form.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Today's Entry</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Tell me about your day..." rows={15} className="text-base" {...field} />
+              </FormControl>
+               <p className="text-sm text-muted-foreground">
+                The content of your entry is end-to-end encrypted for your privacy.
+               </p>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <p className="text-sm text-muted-foreground">
-          The content of your entry is end-to-end encrypted for your privacy.
-        </p>
-      </div>
-      <SubmitButton />
-    </form>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Entry'
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 }

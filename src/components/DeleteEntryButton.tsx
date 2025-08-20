@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,10 +15,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
-import { deleteJournalEntry } from '@/lib/actions';
+import { deleteEntry } from '@/lib/data';
 import { useSession } from './SessionProvider';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 
 interface DeleteEntryButtonProps {
   id: string;
@@ -31,31 +31,31 @@ export function DeleteEntryButton({ id }: DeleteEntryButtonProps) {
 
   const handleDelete = async () => {
     if (!user) {
-        toast({
-            title: "Error",
-            description: "You must be logged in to delete an entry.",
-            variant: "destructive"
-        });
-        return;
-    }
-    setIsDeleting(true);
-    try {
-      const result = await deleteJournalEntry(id, user.uid);
-      if (result.success) {
-        toast({
-            title: "Success",
-            description: "Your journal entry has been deleted.",
-        });
-        router.push('/');
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
       toast({
-        title: "Error",
+        title: "Authentication Error",
+        description: "You must be logged in to delete an entry.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsDeleting(true);
+    
+    try {
+      await deleteEntry(user.uid, id);
+      toast({
+        title: "Success",
+        description: "Your journal entry has been deleted.",
+      });
+      router.push('/');
+      router.refresh(); // Refresh dashboard
+    } catch (error) {
+      console.error("Failed to delete entry:", error);
+      toast({
+        title: "Deletion Error",
         description: "Failed to delete the entry. Please try again.",
-        variant: "destructive"
-    });
+        variant: "destructive",
+      });
       setIsDeleting(false);
     }
   };

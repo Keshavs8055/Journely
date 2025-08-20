@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { notFound } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 import { getEntry } from '@/lib/data';
@@ -10,23 +9,24 @@ import type { JournalEntry } from '@/lib/types';
 import { useSession } from '@/components/SessionProvider';
 import { ClientView } from './ClientView';
 
-// This is now a pure Client Component to reliably handle authentication and data fetching.
-export default function EntryPage({ params }: { params: { id: string } }) {
+export default function EntryPage() {
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { user, isLoading: isSessionLoading } = useSession();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    // Don't fetch until we have a user session.
-    if (!user) {
+    if (!user || !id) {
+      // Don't fetch until we have a user and an ID.
       return;
     }
 
     const fetchEntry = async () => {
       try {
         setIsLoading(true);
-        const fetchedEntry = await getEntry(user.uid, params.id);
+        const fetchedEntry = await getEntry(user.uid, id);
         if (fetchedEntry) {
           setEntry(fetchedEntry);
         } else {
@@ -41,9 +41,8 @@ export default function EntryPage({ params }: { params: { id: string } }) {
     };
 
     fetchEntry();
-  }, [user, params.id]);
+  }, [user, id]);
 
-  // Handle various loading and error states.
   if (isSessionLoading || isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -53,10 +52,8 @@ export default function EntryPage({ params }: { params: { id: string } }) {
   }
 
   if (error || !entry) {
-    // If there was an error or the entry is null after loading, show not found.
     notFound();
   }
 
-  // Once data is successfully loaded, render the client view with it.
   return <ClientView entry={entry} />;
 }

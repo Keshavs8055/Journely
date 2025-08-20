@@ -1,108 +1,139 @@
 'use client';
 
-import { createJournalEntry } from '@/lib/actions';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useState, useEffect } from 'react';
+
 import { Textarea } from '@/components/ui/textarea';
-import { SubmitButton } from './SubmitButton';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useSession } from './SessionProvider';
 import { encryptContent } from '@/lib/crypto';
-import { Label } from './ui/label';
-import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { addEntry } from '@/lib/data';
+import { Loader2 } from 'lucide-react';
 
 const DRAFT_KEY = 'reflectionDraft';
 
+const formSchema = z.object({
+  content: z.string().min(1, 'Reflection content cannot be empty.'),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
 interface DailyReflectionFormProps {
-    prompt: string | null;
-    onReflectionSubmit: () => void;
+  prompt: string | null;
+  onReflectionSubmit: () => void;
 }
 
 export function DailyReflectionForm({ prompt, onReflectionSubmit }: DailyReflectionFormProps) {
   const { user } = useSession();
   const { toast } = useToast();
-  const [content, setContent] = useState('');
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      content: '',
+    },
+  });
 
   useEffect(() => {
     try {
       const savedDraft = localStorage.getItem(DRAFT_KEY);
       if (savedDraft) {
-        setContent(JSON.parse(savedDraft));
+        form.reset({ content: JSON.parse(savedDraft) });
       }
     } catch (error) {
       console.error("Could not load reflection draft", error);
     }
-  }, []);
+  }, [form]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(content));
-    } catch (error) {
-       console.error("Could not save reflection draft", error);
-    }
-  }, [content]);
+    const subscription = form.watch((value) => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(value.content));
+      } catch (error) {
+        console.error("Could not save reflection draft", error);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
-  const createReflectionEntry = async (formData: FormData) => {
+  const onSubmit = async (data: FormData) => {
     if (!user) {
-        toast({
-            title: "Error",
-            description: "You must be logged in to save a reflection.",
-            variant: "destructive"
-        });
-        return;
-    }
-    const currentContent = formData.get('content') as string;
-
-    if (!currentContent.trim()) {
-        toast({
-            title: "Error",
-            description: "Reflection content cannot be empty.",
-            variant: "destructive"
-        });
-        return;
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to save a reflection.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    const encryptedContent = await encryptContent(currentContent, user.uid);
-    
-    formData.set('content', encryptedContent);
-    formData.append('userId', user.uid);
-    formData.append('type', 'reflection');
+    setIsSubmitting(true);
     
     try {
-        await createJournalEntry(formData);
-        // Reset the form and clear draft after successful submission
-        setContent('');
-        formRef.current?.reset();
-        localStorage.removeItem(DRAFT_KEY);
-        onReflectionSubmit(); // Notify parent that submission was successful
+      const encryptedContent = await encryptContent(data.content, user.uid);
+      const newEntry = {
+        date: new Date(),
+        title: prompt || 'Daily Reflection',
+        content: encryptedContent,
+        type: 'reflection' as const,
+      };
+
+      await addEntry(user.uid, newEntry);
+      
+      localStorage.removeItem(DRAFT_KEY);
+      form.reset({ content: '' });
+      onReflectionSubmit();
     } catch (error) {
-        toast({
-            title: "Error",
-            description: "Failed to save your reflection. Please try again.",
-            variant: "destructive"
-        });
+      console.error("Failed to save reflection:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your reflection. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
+
   return (
-    <form ref={formRef} id="reflection-form" action={createReflectionEntry} className="space-y-4">
-      <input type="hidden" name="title" value={prompt || 'Daily Reflection'} />
-      <div className="space-y-2">
-        <Label htmlFor="content">{prompt}</Label>
-        <Textarea 
-          id="content" 
-          name="content" 
-          placeholder="Write your reflection here..." 
-          required 
-          rows={5}
-          className="text-base bg-background/50"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{prompt || "What's on your mind today?"}</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Write your reflection here..."
+                  rows={5}
+                  className="text-base bg-background/50"
+                  {...field}
+                />
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                Your reflection is end-to-end encrypted for your privacy.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-         <p className="text-sm text-muted-foreground">
-          Your reflection is end-to-end encrypted for your privacy.
-        </p>
-      </div>
-      <SubmitButton />
-    </form>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Reflection'
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 }
