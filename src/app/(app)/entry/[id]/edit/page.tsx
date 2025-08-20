@@ -1,19 +1,57 @@
 
+'use client';
+
 import { getEntry } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { EditJournalForm } from '@/components/EditJournalForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import type { JournalEntry } from '@/lib/types';
+import { useSession } from '@/components/SessionProvider';
+import { useEffect, useState } from 'react';
 
-// This is now an async Server Component, which is the correct pattern.
-export default async function EditEntryPage({ params }: { params: { id: string } }) {
-  // We fetch the data on the server.
-  const entry = await getEntry('user-placeholder', params.id) as JournalEntry;
+export default function EditEntryPage({ params }: { params: { id: string } }) {
+  const { user, isLoading: isSessionLoading } = useSession();
+  const [entry, setEntry] = useState<JournalEntry | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  if (!entry) {
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const fetchEntry = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedEntry = await getEntry(user.uid, params.id);
+        if (fetchedEntry) {
+          setEntry(fetchedEntry);
+        } else {
+          setError(true);
+        }
+      } catch (e) {
+        console.error("Failed to fetch entry for editing:", e);
+        setError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEntry();
+  }, [user, params.id]);
+
+  if (isSessionLoading || isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !entry) {
     notFound();
   }
 
