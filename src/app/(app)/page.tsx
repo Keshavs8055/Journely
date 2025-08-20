@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { JournalEntries } from '@/components/JournalEntries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Header } from '@/components/Header';
 import { getEntries } from '@/lib/data';
 import { generateReflectionPrompt } from '@/ai/flows/generate-reflection-prompt';
@@ -12,10 +13,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DailyReflectionForm } from '@/components/DailyReflectionForm';
 import { Separator } from '@/components/ui/separator';
+import { isToday, parseISO } from 'date-fns';
+import { Button } from '@/components/ui/button';
 
 const PROMPT_KEY = 'reflectionPrompt';
+const PROMPT_DATE_KEY = 'reflectionPromptDate';
 
-function DailyReflectionCard({ prompt, isLoading, onReflectionSubmit }: { prompt: string | null, isLoading: boolean, onReflectionSubmit: () => void }) {
+function DailyReflectionCard({ 
+    prompt, 
+    isLoading, 
+    onReflectionSubmit, 
+    todaysReflection 
+}: { 
+    prompt: string | null, 
+    isLoading: boolean, 
+    onReflectionSubmit: () => void, 
+    todaysReflection: JournalEntry | undefined 
+}) {
     return (
         <Card className="bg-primary/20 border-primary/40">
             <CardHeader>
@@ -26,6 +40,13 @@ function DailyReflectionCard({ prompt, isLoading, onReflectionSubmit }: { prompt
                     <div className="space-y-4">
                         <Skeleton className="h-6 w-3/4" />
                         <Skeleton className="h-24 w-full" />
+                    </div>
+                ) : todaysReflection ? (
+                    <div className="space-y-4 text-center">
+                        <p className="text-muted-foreground">You've already completed your reflection for today.</p>
+                        <Button asChild>
+                            <Link href={`/entry/${todaysReflection.id}`}>View Today's Reflection</Link>
+                        </Button>
                     </div>
                 ) : (
                     <DailyReflectionForm prompt={prompt} onReflectionSubmit={onReflectionSubmit} />
@@ -45,29 +66,7 @@ export default function DashboardPage() {
 
     const journalEntries = entries.filter(e => e.type === 'journal');
     const reflectionEntries = entries.filter(e => e.type === 'reflection');
-
-    async function fetchNewPrompt() {
-        if (!user) return;
-        setIsPromptLoading(true);
-        try {
-            const journals = entries.filter(e => e.type === 'journal');
-            let newPrompt: string;
-            if (journals.length > 0) {
-                const entryTitles = journals.map(e => e.title).join('\n');
-                const result = await generateReflectionPrompt({ journalEntries: entryTitles });
-                newPrompt = result.reflectionPrompt;
-            } else {
-                newPrompt = "What are you grateful for today?";
-            }
-            setReflectionPrompt(newPrompt);
-            localStorage.setItem(PROMPT_KEY, newPrompt);
-        } catch (error) {
-            console.error("Failed to generate reflection prompt:", error);
-            setReflectionPrompt("What was the most significant moment of your day?");
-        } finally {
-            setIsPromptLoading(false);
-        }
-    }
+    const todaysReflection = reflectionEntries.find(e => isToday(parseISO(e.date)));
 
     useEffect(() => {
         async function fetchData() {
@@ -83,31 +82,49 @@ export default function DashboardPage() {
 
     useEffect(() => {
         async function managePrompt() {
-            if (user) {
-                const savedPrompt = localStorage.getItem(PROMPT_KEY);
-                if (savedPrompt) {
-                    setReflectionPrompt(savedPrompt);
-                    setIsPromptLoading(false);
-                } else {
-                    await fetchNewPrompt();
+            if (!user) return;
+            setIsPromptLoading(true);
+
+            const savedPrompt = localStorage.getItem(PROMPT_KEY);
+            const savedDate = localStorage.getItem(PROMPT_DATE_KEY);
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+            if (savedPrompt && savedDate === today) {
+                setReflectionPrompt(savedPrompt);
+            } else {
+                try {
+                    const journals = journalEntries.length > 0 ? journalEntries : entries.filter(e => e.type === 'journal');
+                    let newPrompt: string;
+                    if (journals.length > 0) {
+                        const entryTitles = journals.map(e => e.title).join('\n');
+                        const result = await generateReflectionPrompt({ journalEntries: entryTitles });
+                        newPrompt = result.reflectionPrompt;
+                    } else {
+                        newPrompt = "What are you grateful for today?";
+                    }
+                    setReflectionPrompt(newPrompt);
+                    localStorage.setItem(PROMPT_KEY, newPrompt);
+                    localStorage.setItem(PROMPT_DATE_KEY, today);
+                } catch (error) {
+                    console.error("Failed to generate reflection prompt:", error);
+                    setReflectionPrompt("What was the most significant moment of your day?");
                 }
             }
+            setIsPromptLoading(false);
         }
-        // We only want to run this when the user or entries (for prompt context) change.
+
+        // Only manage prompt if we are not loading initial entries
         if (!isLoading) {
             managePrompt();
         }
-    }, [user, entries, isLoading]);
+    }, [user, entries, isLoading]); // depends on entries to get context for new prompts
 
     const handleReflectionSubmit = () => {
-        localStorage.removeItem(PROMPT_KEY);
-        // After removing the key, we need to fetch a new prompt.
-        // We can refetch entries as well to show the new reflection.
+        // Refetch entries to show the new reflection and trigger the "already reflected" state
         async function refreshData() {
             if(user) {
                 const fetchedEntries = await getEntries(user.uid);
                 setEntries(fetchedEntries);
-                // fetchNewPrompt will be triggered by the `entries` dependency change in the useEffect above.
             }
         }
         refreshData();
@@ -118,7 +135,12 @@ export default function DashboardPage() {
         <div className="space-y-8">
             <Header />
 
-            <DailyReflectionCard prompt={reflectionPrompt} isLoading={isPromptLoading} onReflectionSubmit={handleReflectionSubmit} />
+            <DailyReflectionCard 
+                prompt={reflectionPrompt} 
+                isLoading={isPromptLoading || isLoading} 
+                onReflectionSubmit={handleReflectionSubmit}
+                todaysReflection={todaysReflection}
+            />
 
             <Tabs defaultValue="journals" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
