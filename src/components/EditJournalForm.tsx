@@ -10,6 +10,8 @@ import { useSession } from './SessionProvider';
 import { decryptContent, encryptContent } from '@/lib/crypto';
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface EditJournalFormProps {
     entry: JournalEntry;
@@ -17,6 +19,8 @@ interface EditJournalFormProps {
 
 export function EditJournalForm({ entry }: EditJournalFormProps) {
   const { user } = useSession();
+  const { toast } = useToast();
+  const router = useRouter();
   const [decryptedContent, setDecryptedContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,7 +43,11 @@ export function EditJournalForm({ entry }: EditJournalFormProps) {
   
   const updateJournalEntryWithEncryption = async (formData: FormData) => {
     if (!user) {
-        // Handle not logged in case
+        toast({
+            title: "Error",
+            description: "You must be logged in to update an entry.",
+            variant: "destructive"
+        });
         return;
     }
     const content = formData.get('content') as string;
@@ -47,7 +55,16 @@ export function EditJournalForm({ entry }: EditJournalFormProps) {
     formData.set('content', encryptedContent);
     formData.append('userId', user.uid);
 
-    await updateJournalEntry(formData);
+    const result = await updateJournalEntry(formData);
+    // The redirect is handled inside the server action on success.
+    // We only need to handle the error case here.
+    if (result && result.error) {
+        toast({
+            title: "Error",
+            description: result.error,
+            variant: "destructive"
+        });
+    }
   };
 
   return (

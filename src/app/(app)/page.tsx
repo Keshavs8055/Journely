@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { JournalEntries } from '@/components/JournalEntries';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -68,17 +68,18 @@ export default function DashboardPage() {
     const reflectionEntries = entries.filter(e => e.type === 'reflection');
     const todaysReflection = reflectionEntries.find(e => isToday(parseISO(e.date)));
 
-    useEffect(() => {
-        async function fetchData() {
-            if (user) {
-                setIsLoading(true);
-                const fetchedEntries = await getEntries(user.uid);
-                setEntries(fetchedEntries);
-                setIsLoading(false);
-            }
+    const refreshEntries = useCallback(async () => {
+        if (user) {
+            setIsLoading(true);
+            const fetchedEntries = await getEntries(user.uid);
+            setEntries(fetchedEntries);
+            setIsLoading(false);
         }
-        fetchData();
     }, [user]);
+
+    useEffect(() => {
+        refreshEntries();
+    }, [refreshEntries]);
 
     useEffect(() => {
         async function managePrompt() {
@@ -119,18 +120,6 @@ export default function DashboardPage() {
         }
     }, [user, entries, isLoading]); // depends on entries to get context for new prompts
 
-    const handleReflectionSubmit = () => {
-        // Refetch entries to show the new reflection and trigger the "already reflected" state
-        async function refreshData() {
-            if(user) {
-                const fetchedEntries = await getEntries(user.uid);
-                setEntries(fetchedEntries);
-            }
-        }
-        refreshData();
-    };
-
-
     return (
         <div className="space-y-8">
             <Header />
@@ -138,7 +127,7 @@ export default function DashboardPage() {
             <DailyReflectionCard 
                 prompt={reflectionPrompt} 
                 isLoading={isPromptLoading || isLoading} 
-                onReflectionSubmit={handleReflectionSubmit}
+                onReflectionSubmit={refreshEntries}
                 todaysReflection={todaysReflection}
             />
 
@@ -161,7 +150,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     ) : (
-                        <JournalEntries entries={journalEntries} />
+                        <JournalEntries entries={journalEntries} onEntriesChange={refreshEntries} />
                     )}
                 </TabsContent>
                 <TabsContent value="reflections">
@@ -178,7 +167,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     ) : (
-                        <JournalEntries entries={reflectionEntries} />
+                        <JournalEntries entries={reflectionEntries} onEntriesChange={refreshEntries} />
                     )}
                 </TabsContent>
             </Tabs>

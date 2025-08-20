@@ -9,12 +9,14 @@ import { useSession } from './SessionProvider';
 import { encryptContent } from '@/lib/crypto';
 import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 const DRAFT_KEY = 'journalDraft';
 
 export function JournalForm() {
   const { user } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -67,17 +69,23 @@ export function JournalForm() {
     formData.append('userId', user.uid);
     formData.append('type', 'journal');
     
-    try {
-        await createJournalEntry(formData);
+    const result = await createJournalEntry(formData);
+    
+    if (result.success) {
         // Clear draft on successful submission
         setTitle('');
         setContent('');
         formRef.current?.reset();
         localStorage.removeItem(DRAFT_KEY);
-    } catch (error) {
+        toast({
+            title: "Success!",
+            description: "Your journal entry has been saved.",
+        });
+        router.push('/');
+    } else {
         toast({
             title: "Error",
-            description: "Failed to save your entry. Please try again.",
+            description: result.error || "Failed to save your entry. Please try again.",
             variant: "destructive"
         });
     }

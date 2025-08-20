@@ -8,15 +8,18 @@ import { Trash2, Loader2 } from 'lucide-react';
 import { deleteMultipleEntries } from '@/lib/actions';
 import type { JournalEntry } from '@/lib/types';
 import { useSession } from './SessionProvider';
+import { useToast } from '@/hooks/use-toast';
 
 interface JournalEntriesProps {
     entries: JournalEntry[];
+    onEntriesChange: () => void;
 }
 
-export function JournalEntries({ entries }: JournalEntriesProps) {
+export function JournalEntries({ entries, onEntriesChange }: JournalEntriesProps) {
   const [isPending, startTransition] = useTransition();
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const { user } = useSession();
+  const { toast } = useToast();
   
   const handleFormChange = (e: React.ChangeEvent<HTMLFormElement>) => {
     const formData = new FormData(e.currentTarget);
@@ -28,21 +31,40 @@ export function JournalEntries({ entries }: JournalEntriesProps) {
 
   const handleSubmit = (formData: FormData) => {
     if (!user) {
-      console.error("User not found");
+      toast({
+        title: "Error",
+        description: "You must be logged in to delete entries.",
+        variant: "destructive"
+      });
       return;
     }
     formData.append('userId', user.uid);
     startTransition(async () => {
-        await deleteMultipleEntries(formData);
-        setSelectedEntries([]);
-        // Reset checkboxes state visually by resetting the form
-        const form = document.querySelector('form');
-        form?.reset();
+        const result = await deleteMultipleEntries(formData);
+        if (result.success) {
+            onEntriesChange(); // Refresh entries on parent
+            setSelectedEntries([]);
+            // Reset checkboxes state visually by resetting the form
+            const form = document.querySelector('form[name="journal-entries-form"]');
+            if (form instanceof HTMLFormElement) {
+                form.reset();
+            }
+            toast({
+                title: "Success",
+                description: `${selectedEntries.length} entries deleted.`,
+            });
+        } else {
+            toast({
+                title: "Error",
+                description: result.error,
+                variant: "destructive"
+            });
+        }
     })
   }
 
   return (
-    <form onChange={handleFormChange} action={handleSubmit}>
+    <form name="journal-entries-form" onChange={handleFormChange} action={handleSubmit}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-headline">Recent Entries</h2>
