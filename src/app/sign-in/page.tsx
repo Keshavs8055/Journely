@@ -1,20 +1,18 @@
+"use client";
 
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   sendPasswordResetEmail,
   sendEmailVerification,
   AuthErrorCodes,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { Button } from '@/components/ui/button';
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -22,13 +20,13 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Logo } from '@/components/Logo';
-import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Logo } from "@/components/Logo";
+import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,78 +37,81 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
+import { useSession } from "@/components/SessionProvider";
 
 const getAuthErrorMessage = (code: string) => {
-    switch (code) {
-        case AuthErrorCodes.INVALID_EMAIL:
-            return "Invalid email address format.";
-        case AuthErrorCodes.USER_DELETED:
-            return "This user account has been deleted.";
-        case AuthErrorCodes.INVALID_PASSWORD:
-            return "Incorrect password. Please try again.";
-        case AuthErrorCodes.EMAIL_EXISTS:
-            return "An account with this email already exists.";
-        case 'auth/missing-password':
-            return "Please enter a password.";
-        case 'auth/weak-password':
-            return 'Password should be at least 6 characters.';
-        default:
-            return "An unexpected error occurred. Please try again.";
-    }
-}
+  switch (code) {
+    case AuthErrorCodes.INVALID_EMAIL:
+      return "Invalid email address format.";
+    case AuthErrorCodes.INVALID_LOGIN_CREDENTIALS:
+      return "Invalid email or password.";
+    case AuthErrorCodes.USER_DELETED:
+      return "This user account has been deleted.";
+    case AuthErrorCodes.INVALID_PASSWORD:
+      return "Incorrect password. Please try again.";
+    case AuthErrorCodes.EMAIL_EXISTS:
+      return "An account with this email already exists.";
+    case "auth/missing-password":
+      return "Please enter a password.";
+    case "auth/weak-password":
+      return "Password should be at least 6 characters.";
+    case "auth/popup-closed-by-user":
+      return "Sign-in process cancelled.";
+    default:
+      return "An unexpected error occurred. Please try again.";
+  }
+};
 
 export default function SignInPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isRedirectLoading, setIsRedirectLoading] = useState(true);
-  const [resetEmail, setResetEmail] = useState('');
+  const [resetEmail, setResetEmail] = useState("");
   const router = useRouter();
   const { toast } = useToast();
+  const { user, isLoading: isSessionLoading } = useSession();
 
   useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // User signed in or signed up.
-          router.push('/');
-          return; // Stop execution to avoid setting loading to false
-        }
-      } catch (error: any) {
-        if (error.code !== 'auth/popup-closed-by-user') {
-            setError(getAuthErrorMessage(error.code));
-        }
-      }
-      // Only set loading to false if there is no redirect result.
-      setIsRedirectLoading(false);
-    };
-    checkRedirect();
-  }, [router]);
+    if (!isSessionLoading && user) {
+      router.push("/");
+    }
+  }, [user, isSessionLoading, router]);
 
-  const handleAuthAction = async (action: 'signIn' | 'signUp') => {
+  const handleAuthAction = async (action: "signIn" | "signUp") => {
     setIsLoading(true);
     setError(null);
     setInfo(null);
     try {
-      if (action === 'signUp') {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      if (action === "signUp") {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
         await sendEmailVerification(userCredential.user);
-        setInfo('Sign up successful! A verification email has been sent. Please check your inbox.');
-        setEmail('');
-        setPassword('');
+        setInfo(
+          "Sign up successful! A verification email has been sent. Please check your inbox."
+        );
+        setEmail("");
+        setPassword("");
       } else {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
         if (!userCredential.user.emailVerified) {
-            setError('Please verify your email before logging in. Another verification email has been sent.');
-            await sendEmailVerification(userCredential.user);
-            setIsLoading(false);
-            return;
+          setError(
+            "Please verify your email before logging in. Another verification email has been sent."
+          );
+          await sendEmailVerification(userCredential.user);
+          setIsLoading(false);
+          return;
         }
-        router.push('/');
+        router.push("/");
       }
     } catch (error: any) {
       setError(getAuthErrorMessage(error.code));
@@ -121,46 +122,43 @@ export default function SignInPage() {
 
   const handlePasswordReset = async () => {
     if (!resetEmail) {
-        toast({
-            title: "Error",
-            description: "Please enter your email address.",
-            variant: "destructive"
-        });
-        return;
+      toast({
+        title: "Error",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
     }
     setIsLoading(true);
     setError(null);
     try {
-        await sendPasswordResetEmail(auth, resetEmail);
-        toast({
-            title: "Success",
-            description: "A password reset email has been sent to your address.",
-        });
+      await sendPasswordResetEmail(auth, resetEmail);
+      toast({
+        title: "Success",
+        description: "A password reset email has been sent to your address.",
+      });
     } catch (error: any) {
-        setError(getAuthErrorMessage(error.code));
+      setError(getAuthErrorMessage(error.code));
     } finally {
-        setIsLoading(false);
-    }
-  }
-
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setIsRedirectLoading(true); // Show loader while redirect is processed
-    setError(null);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-    } catch (error: any) {
-      // Don't show an error if the user closes the sign-in popup.
-      if (error.code !== 'auth/popup-closed-by-user') {
-        setError(getAuthErrorMessage(error.code));
-      }
       setIsLoading(false);
-      setIsRedirectLoading(false);
     }
   };
 
-  if (isRedirectLoading) {
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      // On successful sign-in, the useEffect will redirect to '/'
+    } catch (error: any) {
+      setError(getAuthErrorMessage(error.code));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isSessionLoading || user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -172,11 +170,11 @@ export default function SignInPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="mb-8 flex flex-col items-center">
         <Logo />
-        <p className="text-muted-foreground mt-2">
-          Your personal AI-powered journaling companion.
-        </p>
       </div>
-      <Tabs defaultValue="login" className="w-full max-w-sm">
+      <Tabs
+        defaultValue="login"
+        className="w-full max-w-sm"
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>
           <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -185,7 +183,9 @@ export default function SignInPage() {
           <Card>
             <CardHeader>
               <CardTitle>Login</CardTitle>
-              <CardDescription>Access your journal by logging in.</CardDescription>
+              <CardDescription>
+                Access your journal by logging in.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -211,41 +211,53 @@ export default function SignInPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button onClick={() => handleAuthAction('signIn')} className="w-full" disabled={isLoading}>
+              <Button
+                onClick={() => handleAuthAction("signIn")}
+                className="w-full"
+                disabled={isLoading}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
               </Button>
-               <AlertDialog>
+              <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button variant="link" className="text-sm">Forgot Password?</Button>
+                  <Button
+                    variant="link"
+                    className="text-sm"
+                  >
+                    Forgot Password?
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
-                    <AlertDialogHeader>
+                  <AlertDialogHeader>
                     <AlertDialogTitle>Reset Password</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Enter your email address and we'll send you a link to reset your password.
+                      Enter your email address and we'll send you a link to
+                      reset your password.
                     </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="space-y-2">
-                        <Label htmlFor="reset-email">Email</Label>
-                        <Input
-                        id="reset-email"
-                        type="email"
-                        placeholder="m@example.com"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        required
-                        />
-                    </div>
-                    <AlertDialogFooter>
+                  </AlertDialogHeader>
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="m@example.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handlePasswordReset}>
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Send Reset Link
+                      {isLoading && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Send Reset Link
                     </AlertDialogAction>
-                    </AlertDialogFooter>
+                  </AlertDialogFooter>
                 </AlertDialogContent>
-                </AlertDialog>
+              </AlertDialog>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -281,7 +293,11 @@ export default function SignInPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button onClick={() => handleAuthAction('signUp')} className="w-full" disabled={isLoading}>
+              <Button
+                onClick={() => handleAuthAction("signUp")}
+                className="w-full"
+                disabled={isLoading}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign Up
               </Button>
@@ -299,20 +315,37 @@ export default function SignInPage() {
           </div>
         </div>
         <div className="mt-6">
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
-              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 74.3C309 93.5 280.7 80 248 80c-73.2 0-132.3 59.2-132.3 132S174.8 384 248 384c88.8 0 112.3-63.8 115.3-93.2H248v-65.6h239.2c.4 12.3.6 24.6.6 37.2z"></path></svg>
-            }
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <svg
+                className="mr-2 h-4 w-4"
+                aria-hidden="true"
+                focusable="false"
+                data-prefix="fab"
+                data-icon="google"
+                role="img"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 488 512"
+              >
+                <path
+                  fill="currentColor"
+                  d="M488 261.8C488 403.3 381.5 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 74.3C309 93.5 280.7 80 248 80c-73.2 0-132.3 59.2-132.3 132S174.8 384 248 384c88.8 0 112.3-63.8 115.3-93.2H248v-65.6h239.2c.4 12.3.6 24.6.6 37.2z"
+                ></path>
+              </svg>
+            )}
             Google
           </Button>
         </div>
       </Tabs>
-      {info && (
-        <p className="mt-4 text-sm text-green-600">{info}</p>
-      )}
-      {error && (
-        <p className="mt-4 text-sm text-destructive">{error}</p>
-      )}
+      {info && <p className="mt-4 text-sm text-green-600">{info}</p>}
+      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
     </main>
   );
 }
