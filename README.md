@@ -1,6 +1,7 @@
 # Journely
 
 Journely is a modern journaling application designed to help users record, organize, and reflect on their daily experiences. Built with simplicity and privacy in mind, Journely allows you to capture thoughts, memories, and goals in a secure environment.
+[Live](https://journely-psi.vercel.app/)
 
 ## Features
 
